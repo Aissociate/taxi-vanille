@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
@@ -9,33 +9,36 @@ import { syncAll } from '@/src/lib/sync';
 
 const BRAND = '#F26419';
 const INK = '#1A1718';
-const INK2 = '#393536';
 const INK3 = '#6B6566';
 const INK4 = '#B9B3B4';
 const INK5 = '#E8E5E6';
 const BG = '#FAFAF9';
 const SUCCESS = '#2E8B57';
 const DANGER = '#D13A2A';
-const WARN = '#E8A523';
+const WARN = '#F26419';
 
 const MOCK_TRIPS = [
-  { id:'AM1', time:'05:00', label:'AM · Aller',    direction:'Doujani → Passot La Barge', meta:'7 arrêts · L3', status:'done',    pill:'TERMINÉ' },
-  { id:'AM2', time:'06:30', label:'AM · Retour',   direction:'Passot La Barge → Doujani', meta:'7 arrêts · L3', status:'done',    pill:'TERMINÉ' },
-  { id:'AM3', time:'08:10', label:'AM · Fin serv', direction:'Retour dépôt Doujani',      meta:'Fin service AM',status:'done',    pill:'TERMINÉ' },
-  { id:'PM1', time:'14:40', label:'PM · Aller',    direction:'Doujani → Passot La Barge', meta:'7 arrêts · L3', status:'next',    pill:'PROCHAIN' },
-  { id:'PM2', time:'16:20', label:'PM · Retour',   direction:'Passot La Barge → Doujani', meta:'7 arrêts · L3', status:'planned', pill:'PLANIFIÉ' },
-  { id:'PM3', time:'18:10', label:'PM · Fin serv', direction:'Retour dépôt Doujani',      meta:'Fin service PM',status:'planned', pill:'PLANIFIÉ' },
+  { id: 'T1', time: '07:30', name: 'CHM Mamoudzou',        patients: 4, stops: 6, status: 'done' },
+  { id: 'T2', time: '09:15', name: 'EHPAD de Pamandzi',    patients: 3, stops: 4, status: 'sync' },
+  { id: 'T3', time: '11:00', name: 'Clinique de l\'Océan', patients: 5, stops: 7, status: 'sync' },
+  { id: 'T4', time: '14:00', name: 'Cabinet médical Cavani',patients:2, stops: 3, status: 'planned' },
+  { id: 'T5', time: '16:30', name: 'EHPAD de Pamandzi',    patients: 4, stops: 5, status: 'planned' },
 ];
 
-function statusColor(status: string) {
-  if (status === 'done') return SUCCESS;
-  if (status === 'next' || status === 'live') return BRAND;
-  return INK4;
+const DRIVER_NUM = '047';
+const CACHE_TIME = '09:02';
+
+function formatDate() {
+  const d = new Date();
+  const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  const months = ['jan', 'fév', 'mar', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc'];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
 }
 
 export default function ScheduleScreen() {
   const [trips, setTrips] = useState<any[]>(MOCK_TRIPS);
   const [offline, setOffline] = useState(false);
+  const [pendingCount, setPendingCount] = useState(12);
   const gpsInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { isLoading, refetch } = useQuery({
@@ -71,90 +74,143 @@ export default function ScheduleScreen() {
     return () => { if (gpsInterval.current) clearInterval(gpsInterval.current); };
   }, []);
 
+  const syncCount = trips.filter(t => t.status === 'sync').length;
+
   return (
-    <View style={s.container}>
-      {offline && (
-        <View style={s.offlineBanner}>
-          <Text style={s.offlineText}>⚡ MODE HORS-LIGNE · données locales</Text>
+    <View style={s.screen}>
+      {/* Offline / sync banner */}
+      {(offline || syncCount > 0) && (
+        <View style={s.banner}>
+          <Text style={s.bannerText}>
+            ⚠  MODE HORS-LIGNE · {pendingCount} ÉLÉMENTS EN ATTENTE
+          </Text>
         </View>
       )}
 
+      {/* Header */}
       <View style={s.header}>
-        <Text style={s.eyebrow}>D1 · MOHAMED Ali · GR-558-LA</Text>
-        <Text style={s.title}>Planning du jour</Text>
-        <Text style={s.badge}>L3 · Ven 8 mai 2026</Text>
+        <View>
+          <Text style={s.dateText}>{formatDate().toUpperCase()}</Text>
+          <Text style={s.titleText}>Planning du jour</Text>
+        </View>
+        <Text style={s.driverNum}>{DRIVER_NUM}</Text>
       </View>
 
-      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => { syncAll(); refetch(); }}/>}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.scrollContent}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => { syncAll(); refetch(); }} tintColor={BRAND} />}>
+
+        {/* Cache info pill */}
+        {offline && (
+          <View style={s.cachePill}>
+            <Text style={s.cachePillText}>Données en cache · dernière maj {CACHE_TIME}</Text>
+          </View>
+        )}
+
         {trips.map(trip => {
-          const color = statusColor(trip.status || 'planned');
-          const isDone = trip.status === 'done';
-          const isNext = trip.status === 'next' || trip.status === 'live';
+          const status = trip.status || 'planned';
+          const isDone = status === 'done';
+          const isLive = status === 'in_progress' || status === 'live';
+          const isSync = status === 'sync';
+
           return (
-            <TouchableOpacity key={trip.id || trip.trip_id}
-              style={[s.card, isNext && s.cardNext, isDone && s.cardDone]}
+            <TouchableOpacity
+              key={trip.id || trip.trip_id}
+              style={[s.card, isLive && s.cardLive, isDone && s.cardDone]}
               onPress={() => {
-                if (!isDone) router.push({ pathname:'/(app)/trip', params: { tripId: trip.id || trip.trip_id } });
+                if (!isDone) router.push({ pathname: '/(app)/trip', params: { tripId: trip.id || trip.trip_id } });
               }}
-              activeOpacity={isDone ? 1 : 0.8}>
-              <View style={[s.sideBar, { backgroundColor: color }]}/>
-              <View style={s.cardBody}>
-                <Text style={[s.time, isDone && s.timeDone, isNext && s.timeActive]}>
-                  {trip.time || trip.scheduled_start?.slice(11,16) || '--:--'}
-                </Text>
-                <Text style={[s.label2, isDone && s.labelDone]}>
-                  {trip.label || trip.direction || trip.route_code || 'Trajet'}
-                </Text>
-                <Text style={[s.meta, isDone && s.metaDone]}>
-                  {trip.meta || trip.stop_count ? `${trip.stop_count} arrêts · L3` : 'L3'}
-                </Text>
-                <View style={s.statusPill}>
-                  <View style={[s.dot, { backgroundColor: color }, isNext && s.dotPulse]}/>
-                  <Text style={[s.pillText, { color }]}>
-                    {trip.pill || (trip.status==='done'?'TERMINÉ':trip.status==='in_progress'?'EN COURS':'PLANIFIÉ')}
-                  </Text>
+              activeOpacity={isDone ? 1 : 0.75}>
+              {/* Green left bar for done */}
+              {isDone && <View style={s.doneBar} />}
+
+              <View style={s.cardInner}>
+                {/* Status pill */}
+                <View style={s.statusArea}>
+                  {isDone && (
+                    <View style={s.statusRow}>
+                      <View style={[s.dot, { backgroundColor: SUCCESS }]} />
+                      <Text style={[s.statusText, { color: SUCCESS }]}>TERMINÉ</Text>
+                    </View>
+                  )}
+                  {isLive && (
+                    <View style={s.statusRow}>
+                      <View style={[s.dot, { backgroundColor: BRAND }]} />
+                      <Text style={[s.statusText, { color: BRAND }]}>EN COURS</Text>
+                    </View>
+                  )}
+                  {isSync && (
+                    <View style={s.statusRow}>
+                      <Text style={[s.statusText, { color: BRAND }]}>↻ à synchroniser</Text>
+                    </View>
+                  )}
+                  {!isDone && !isLive && !isSync && (
+                    <View style={s.statusRow}>
+                      <View style={[s.dot, { backgroundColor: INK4 }]} />
+                      <Text style={[s.statusText, { color: INK4 }]}>PLANIFIÉ</Text>
+                    </View>
+                  )}
                 </View>
+
+                {/* Time */}
+                <Text style={[s.time, isDone && s.timeDone, isLive && s.timeLive]}>
+                  {trip.time || trip.scheduled_start?.slice(11, 16) || '--:--'}
+                </Text>
+
+                {/* Name */}
+                <Text style={[s.name, isDone && s.nameDone]}>
+                  {trip.name || trip.direction || trip.route_code || 'Trajet'}
+                </Text>
+
+                {/* Meta */}
+                <Text style={[s.meta, isDone && s.metaDone]}>
+                  {`${trip.patients ?? trip.stop_count ?? 0} patients · ${trip.stops ?? 0} arrêts`}
+                </Text>
               </View>
             </TouchableOpacity>
           );
         })}
-        <View style={{height:80}}/>
+
+        <View style={{ height: 80 }} />
       </ScrollView>
 
-      <TouchableOpacity style={s.incidentFab} onPress={() => router.push('/(app)/incident')}>
-        <Text style={s.incidentFabText}>⚠  SIGNALER UN INCIDENT</Text>
+      {/* Incident FAB */}
+      <TouchableOpacity style={s.incidentBar} onPress={() => router.push('/(app)/incident')}>
+        <Text style={s.incidentBarText}>⚠  SIGNALER UN INCIDENT</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex:1, backgroundColor:'#fff' },
-  offlineBanner: { backgroundColor:WARN, paddingVertical:12, paddingHorizontal:20, alignItems:'center', flexDirection:'row', justifyContent:'center', gap:8 },
-  offlineText: { fontFamily:'SpaceMono', fontSize:11, fontWeight:'700', color:'#fff', letterSpacing:1.5, textTransform:'uppercase' },
-  header: { paddingHorizontal:20, paddingTop:18, paddingBottom:14, backgroundColor:'#fff' },
-  eyebrow: { fontFamily:'SpaceMono', fontSize:10, letterSpacing:2.5, textTransform:'uppercase', color:INK3, marginBottom:4 },
-  title: { fontSize:26, fontWeight:'700', color:INK },
-  badge: { fontFamily:'SpaceMono', fontSize:12, color:INK3, marginTop:4 },
-  scroll: { flex:1, backgroundColor:BG },
-  scrollContent: { paddingHorizontal:16, paddingTop:12 },
-  card: { backgroundColor:'#fff', borderRadius:14, borderWidth:1.5, borderColor:INK5, marginBottom:12, flexDirection:'row', overflow:'hidden', position:'relative' },
-  cardNext: { borderColor:BRAND, shadowColor:BRAND, shadowOffset:{width:0,height:2}, shadowOpacity:0.15, shadowRadius:8, elevation:4 },
-  cardDone: { opacity:0.72 },
-  sideBar: { width:5 },
-  cardBody: { flex:1, padding:16, paddingLeft:14 },
-  time: { fontFamily:'SpaceMono', fontSize:22, fontWeight:'700', color:INK },
-  timeDone: { color:INK3 },
-  timeActive: { color:BRAND },
-  label2: { fontSize:15, fontWeight:'600', color:INK, marginTop:2 },
-  labelDone: { color:INK3 },
-  meta: { fontSize:12, color:INK3, marginTop:2 },
-  metaDone: { color:INK4 },
-  statusPill: { position:'absolute', top:16, right:14, flexDirection:'row', alignItems:'center', gap:5 },
-  dot: { width:7, height:7, borderRadius:3.5 },
-  dotPulse: { },
-  pillText: { fontFamily:'SpaceMono', fontSize:10, letterSpacing:1.2, textTransform:'uppercase', fontWeight:'700' },
-  incidentFab: { backgroundColor:DANGER, paddingVertical:20, paddingHorizontal:24, alignItems:'center', justifyContent:'center', flexDirection:'row', gap:10 },
-  incidentFabText: { fontFamily:'SpaceMono', fontSize:13, fontWeight:'700', color:'#fff', letterSpacing:2, textTransform:'uppercase' },
+  screen: { flex: 1, backgroundColor: '#fff' },
+  banner: { backgroundColor: WARN, paddingVertical: 11, paddingHorizontal: 20, alignItems: 'center' },
+  bannerText: { fontFamily: 'SpaceMono', fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 1.5, textTransform: 'uppercase' },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  dateText: { fontFamily: 'SpaceMono', fontSize: 10, color: INK3, letterSpacing: 1.5, marginBottom: 2 },
+  titleText: { fontSize: 28, fontWeight: '800', color: INK },
+  driverNum: { fontFamily: 'SpaceMono', fontSize: 14, color: INK4, fontWeight: '700', paddingBottom: 4 },
+  scroll: { flex: 1, backgroundColor: BG },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 10 },
+  cachePill: { borderRadius: 10, borderWidth: 1.5, borderColor: INK5, borderStyle: 'dashed', paddingVertical: 10, paddingHorizontal: 14, marginBottom: 12, backgroundColor: '#fff' },
+  cachePillText: { fontSize: 12, color: INK3 },
+  card: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1.5, borderColor: INK5, marginBottom: 10, flexDirection: 'row', overflow: 'hidden' },
+  cardLive: { borderColor: BRAND },
+  cardDone: { },
+  doneBar: { width: 4, backgroundColor: SUCCESS },
+  cardInner: { flex: 1, padding: 16 },
+  statusArea: { position: 'absolute', top: 14, right: 14 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  dot: { width: 7, height: 7, borderRadius: 3.5 },
+  statusText: { fontFamily: 'SpaceMono', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+  time: { fontFamily: 'SpaceMono', fontSize: 26, fontWeight: '700', color: INK, marginBottom: 2 },
+  timeDone: { color: INK3 },
+  timeLive: { color: BRAND },
+  name: { fontSize: 15, fontWeight: '700', color: INK, marginBottom: 2 },
+  nameDone: { color: INK3 },
+  meta: { fontSize: 12, color: INK3 },
+  metaDone: { color: INK4 },
+  incidentBar: { backgroundColor: DANGER, paddingVertical: 20, alignItems: 'center' },
+  incidentBarText: { fontFamily: 'SpaceMono', fontSize: 12, fontWeight: '700', color: '#fff', letterSpacing: 2.5, textTransform: 'uppercase' },
 });
