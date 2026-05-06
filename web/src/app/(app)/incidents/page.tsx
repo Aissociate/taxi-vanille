@@ -1,81 +1,92 @@
 'use client';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import toast from 'react-hot-toast';
+import { useState } from 'react';
+import { AUDIT, kindColor } from '@/lib/data';
+import { PageBar, Eyebrow, Pill, Btn } from '@/components/ui';
 
-const INCIDENT_LABELS: Record<string, string> = {
-  accident: '🚨 Accident',
-  panne: '🔧 Panne',
-  retard: '⏰ Retard',
-  passager_refuse: '🚫 Passager refusé',
-  securite: '🛡️ Sécurité',
-  voie_bloquee: '🚧 Voie bloquée',
-  autre: '❓ Autre',
-};
-
-export default function IncidentsPage() {
-  const { data: incidents = [], isLoading } = useQuery({
-    queryKey: ['incidents'],
-    queryFn: () => api.get('/incidents').then(r => r.data),
-  });
-
-  async function playAudio(incidentId: string) {
-    try {
-      const { data } = await api.get(`/incidents/${incidentId}/audio`);
-      if (data.url) {
-        window.open(data.url, '_blank');
-      } else {
-        toast.error('Aucun audio disponible');
-      }
-    } catch {
-      toast.error('Erreur lors de la récupération de l\'audio');
-    }
-  }
+export default function AuditPage() {
+  const [filter, setFilter] = useState('Tous (248)');
+  const filters = ['Tous (248)','Remplacements (42)','Ajouts (88)','Annulations (24)'];
 
   return (
-    <div className="p-8 max-w-5xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Incidents déclarés</h1>
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <PageBar title="Audit log · planning" sub="Direction · 248 modifications · 30 derniers jours"
+        actions={[{l:'Exporter CSV'},{l:'Restaurer version'}]}/>
 
-      {isLoading && <div className="text-gray-500">Chargement...</div>}
-
-      <div className="space-y-3">
-        {incidents.map((inc: any) => (
-          <div key={inc.id} className="bg-white rounded-xl border border-gray-200 p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-sm font-medium text-gray-900">{inc.driver_name}</span>
-                  <span className="text-xs text-gray-400">N° {inc.driver_number}</span>
-                  <span className="text-xs text-gray-400">
-                    {format(new Date(inc.created_at), 'dd MMM yyyy HH:mm', { locale: fr })}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(inc.types ?? []).map((t: string) => (
-                    <span key={t} className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
-                      {INCIDENT_LABELS[t] ?? t}
-                    </span>
-                  ))}
-                </div>
-                {inc.notes && <div className="text-sm text-gray-500 mt-2">{inc.notes}</div>}
-              </div>
-              {inc.has_audio && (
-                <button
-                  onClick={() => playAudio(inc.id)}
-                  className="ml-4 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100"
-                >
-                  🎙️ Écouter
-                </button>
-              )}
-            </div>
-          </div>
+      <div style={{padding:'10px 24px',borderBottom:'1px dashed var(--stroke3)',display:'flex',gap:8,
+        alignItems:'center',background:'var(--paper)',flexShrink:0}}>
+        <Eyebrow>Filtrer</Eyebrow>
+        {filters.map(f => (
+          <span key={f} onClick={() => setFilter(f)} style={{cursor:'pointer'}}>
+            <Pill variant={filter===f?'active-dark':f.includes('Annulations')?'incident':''}>{f}</Pill>
+          </span>
         ))}
+        <div style={{flex:1}}/>
+        {['7 j','30 j','Personnalisé'].map(t => (
+          <span key={t} onClick={() => {}} style={{cursor:'pointer'}}>
+            <Pill variant={t==='30 j'?'active-dark':''}>{t}</Pill>
+          </span>
+        ))}
+      </div>
 
-        {!isLoading && incidents.length === 0 && (
-          <div className="text-center py-12 text-gray-400">Aucun incident déclaré</div>
-        )}
+      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+        <div className="scroll" style={{flex:1,padding:24}}>
+          {AUDIT.map((g, gi) => (
+            <div key={gi} style={{marginBottom:28}}>
+              <Eyebrow>{g.day}</Eyebrow>
+              <div style={{marginTop:12,position:'relative',paddingLeft:20}}>
+                <div style={{position:'absolute',left:5,top:8,bottom:8,width:1,background:'var(--stroke3)'}}/>
+                {g.items.map((it, i) => (
+                  <div key={i} style={{position:'relative',paddingBottom:14}}>
+                    <div className="tl-dot" style={{background:kindColor[it.kind]||'var(--stroke)'}}/>
+                    <div className="card" style={{background:'#fff',padding:12}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:12,flexWrap:'wrap'}}>
+                        <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                          <span style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:12}}>{it.t}</span>
+                          <span style={{fontSize:13,fontWeight:700}}>{it.action}</span>
+                          <span style={{fontSize:12,color:'var(--stroke2)'}}>· {it.target}</span>
+                        </div>
+                        <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)'}}>{it.who}</span>
+                      </div>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:6,flexWrap:'wrap',gap:6}}>
+                        {it.reason && <div style={{fontSize:11,color:'var(--stroke2)'}}>
+                          <span style={{fontFamily:'var(--font-mono)',textTransform:'uppercase',letterSpacing:'.1em',fontSize:9,marginRight:6}}>Raison</span>
+                          {it.reason}
+                        </div>}
+                        {it.notify && <Pill variant="live" dot>{it.notify}</Pill>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{width:300,borderLeft:'1.5px solid var(--stroke)',overflow:'auto',
+          background:'#fff',padding:18,flexShrink:0}}>
+          <Eyebrow>Détail · 11:42 — Remplacement</Eyebrow>
+          <div style={{fontSize:14,fontWeight:700,marginTop:6}}>D1 → D5 · 14:40 DOUJANI</div>
+          <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)',marginTop:2}}>par M. Aubin · IP 41.x.x.12</div>
+          <div className="card-soft" style={{padding:10,marginTop:16}}>
+            <Eyebrow>Avant</Eyebrow>
+            <div style={{fontSize:12,marginTop:4}}><b>D1</b> · MOHAMED Ali · 14:40-18:10</div>
+          </div>
+          <div style={{textAlign:'center',fontFamily:'var(--font-hand)',fontSize:20,color:'var(--brand)',margin:'4px 0'}}>↓</div>
+          <div className="card" style={{padding:10,background:'var(--accent-soft)',borderColor:'var(--brand)'}}>
+            <Eyebrow>Après</Eyebrow>
+            <div style={{fontSize:12,marginTop:4}}><b>D5</b> · AMINA Selemani · 14:40-18:10</div>
+          </div>
+          <div style={{marginTop:18}}>
+            <Eyebrow>Notifications envoyées</Eyebrow>
+            <ul style={{fontSize:11,color:'var(--stroke2)',paddingLeft:16,lineHeight:1.8,marginTop:6}}>
+              <li>FCM push → D5 · livré 11:42:04</li>
+              <li>FCM push → D1 · livré 11:42:04</li>
+              <li>Email CADEMA · envoyé 11:42:08</li>
+            </ul>
+          </div>
+          <Btn style={{width:'100%',marginTop:18,height:38}}>↶ Annuler ce changement</Btn>
+          <div style={{fontSize:10,color:'var(--stroke2)',textAlign:'center',marginTop:6}}>↳ jusqu'à 24 h après l'action</div>
+        </div>
       </div>
     </div>
   );

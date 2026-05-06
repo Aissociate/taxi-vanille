@@ -7,136 +7,202 @@ import { enqueueEvent } from '@/src/lib/db';
 import { syncAll } from '@/src/lib/sync';
 import { randomUUID } from 'expo-crypto';
 
+const BRAND = '#F26419';
+const INK = '#1A1718';
+const INK2 = '#393536';
+const INK3 = '#6B6566';
+const INK4 = '#B9B3B4';
+const INK5 = '#E8E5E6';
+const BG = '#FAFAF9';
+const SUCCESS = '#2E8B57';
+const DANGER = '#D13A2A';
+
+const MOCK_STOPS = [
+  { id:'s1', name:'Doujani · Dépôt', time:'14:40' },
+  { id:'s2', name:'Majicavo Koropa', time:'14:48' },
+  { id:'s3', name:'Cavani Centre', time:'14:55' },
+  { id:'s4', name:'Place Mariage', time:'15:02' },
+  { id:'s5', name:'Mamoudzou Centre', time:'15:08' },
+  { id:'s6', name:'Kaweni Marché', time:'15:16' },
+  { id:'s7', name:'Passot La Barge', time:'15:24' },
+];
+
 export default function TripScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [passengersIn, setPassengersIn] = useState(0);
-  const [passengersOut, setPassengersOut] = useState(0);
-  const [currentStopIdx, setCurrentStopIdx] = useState(0);
+  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const [aboard, setAboard] = useState(12);
+  const [boardingVal, setBoardingVal] = useState(0);
+  const [alightingVal, setAlightingVal] = useState(0);
+  const [stopIdx, setStopIdx] = useState(2);
 
   const { data: trip } = useQuery({
-    queryKey: ['trip', id],
-    queryFn: () => api.get(`/planning/${id}`).then(r => r.data),
+    queryKey: ['trip', tripId],
+    queryFn: () => api.get(`/planning/${tripId}`).then(r => r.data).catch(() => null),
   });
 
-  async function startTrip() {
-    const event = { type: 'start', trip_id: id, local_id: randomUUID(), occurred_at: new Date().toISOString() };
-    enqueueEvent(event.local_id, event.type, event);
-    try {
-      await api.post(`/trips/${id}/start`, { occurred_at: event.occurred_at });
-    } catch { syncAll(); }
-    Alert.alert('Course démarrée', '');
-  }
+  const stops: any[] = trip?.stops ?? MOCK_STOPS;
+  const currentStop = stops[stopIdx] ?? stops[0];
+  const nextStop = stops[stopIdx + 1];
+  const progress = Math.round(((stopIdx) / Math.max(stops.length - 1, 1)) * 100);
 
-  async function recordPassengers(stopId: string) {
+  async function validateStop() {
     const event = {
-      type: 'stop_event', trip_id: id, stop_id: stopId, local_id: randomUUID(),
-      event_type: 'arrived', passengers_in: passengersIn, passengers_out: passengersOut,
+      type: 'stop_event', trip_id: tripId, stop_id: currentStop.id,
+      local_id: randomUUID(), event_type: 'arrived',
+      passengers_in: boardingVal, passengers_out: alightingVal,
       occurred_at: new Date().toISOString(),
     };
     enqueueEvent(event.local_id, event.type, event);
     try {
-      await api.post(`/trips/${id}/stops/${stopId}/event`, { event_type: 'arrived', passengers_in: passengersIn, passengers_out: passengersOut, occurred_at: event.occurred_at });
+      await api.post(`/trips/${tripId}/stops/${currentStop.id}/event`, {
+        event_type: 'arrived', passengers_in: boardingVal, passengers_out: alightingVal,
+        occurred_at: event.occurred_at,
+      });
     } catch { syncAll(); }
-    setPassengersIn(0);
-    setPassengersOut(0);
-    setCurrentStopIdx(i => i + 1);
+
+    setAboard(a => a + boardingVal - alightingVal);
+    setBoardingVal(0);
+    setAlightingVal(0);
+    if (stopIdx < stops.length - 1) {
+      setStopIdx(i => i + 1);
+    }
   }
 
   async function endTrip() {
     Alert.alert('Terminer la course', 'Confirmer la fin de cette course ?', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Terminer', style: 'destructive', onPress: async () => {
-        const event = { type: 'end', trip_id: id, local_id: randomUUID(), occurred_at: new Date().toISOString() };
-        enqueueEvent(event.local_id, event.type, event);
-        try { await api.post(`/trips/${id}/end`, { occurred_at: event.occurred_at }); } catch { syncAll(); }
-        router.back();
-      }},
+      {
+        text: 'Terminer', style: 'destructive', onPress: async () => {
+          const event = { type: 'end', trip_id: tripId, local_id: randomUUID(), occurred_at: new Date().toISOString() };
+          enqueueEvent(event.local_id, event.type, event);
+          try { await api.post(`/trips/${tripId}/end`, { occurred_at: event.occurred_at }); } catch { syncAll(); }
+          router.back();
+        },
+      },
     ]);
   }
 
-  const stops: string[] = trip?.stops_order ? (typeof trip.stops_order === 'string' ? JSON.parse(trip.stops_order) : trip.stops_order) : [];
-
   return (
-    <ScrollView style={s.container}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.back}>
-          <Text style={s.backText}>‹ Retour</Text>
+    <View style={s.screen}>
+      {/* Dark hero header */}
+      <View style={s.hero}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backRow}>
+          <Text style={s.backText}>‹ Planning</Text>
         </TouchableOpacity>
-        <Text style={s.title}>{trip?.client_name ?? 'Course'}</Text>
+        <Text style={s.heroEyebrow}>PM · ALLER · ARRÊT {stopIdx + 1}/{stops.length}</Text>
+        <Text style={s.heroTitle}>Course en cours</Text>
+        <Text style={s.heroSub}>L3 · Doujani → Passot La Barge</Text>
+        {/* Progress bar */}
+        <View style={s.progressTrack}>
+          <View style={[s.progressFill, { width: `${progress}%` as any }]} />
+        </View>
       </View>
 
-      <View style={s.section}>
-        <TouchableOpacity style={[s.actionBtn, { backgroundColor: '#00c9a7' }]} onPress={startTrip}>
-          <Text style={s.actionBtnText}>▶ Démarrer la course</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={s.section}>
-        <Text style={s.sectionTitle}>Comptage passagers</Text>
-        <View style={s.counter}>
-          <View style={s.counterItem}>
-            <Text style={s.counterLabel}>Montants</Text>
-            <View style={s.counterRow}>
-              <TouchableOpacity style={s.counterBtn} onPress={() => setPassengersIn(Math.max(0, passengersIn - 1))}>
-                <Text style={s.counterBtnText}>−</Text>
-              </TouchableOpacity>
-              <Text style={s.counterValue}>{passengersIn}</Text>
-              <TouchableOpacity style={[s.counterBtn, s.counterBtnPlus]} onPress={() => setPassengersIn(passengersIn + 1)}>
-                <Text style={s.counterBtnText}>+</Text>
-              </TouchableOpacity>
-            </View>
+      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}>
+        {/* Current stop card */}
+        <View style={s.stopCard}>
+          <View style={s.stopCardLeft}>
+            <Text style={s.stopCardEyebrow}>ARRÊT ACTUEL</Text>
+            <Text style={s.stopCardName}>{currentStop?.name ?? '—'}</Text>
           </View>
-          <View style={s.counterItem}>
-            <Text style={s.counterLabel}>Descendants</Text>
-            <View style={s.counterRow}>
-              <TouchableOpacity style={s.counterBtn} onPress={() => setPassengersOut(Math.max(0, passengersOut - 1))}>
-                <Text style={s.counterBtnText}>−</Text>
-              </TouchableOpacity>
-              <Text style={s.counterValue}>{passengersOut}</Text>
-              <TouchableOpacity style={[s.counterBtn, s.counterBtnPlus]} onPress={() => setPassengersOut(passengersOut + 1)}>
-                <Text style={s.counterBtnText}>+</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={s.stopCardRight}>
+            <Text style={s.stopCardTime}>{currentStop?.time ?? '--:--'}</Text>
           </View>
         </View>
-        {stops[currentStopIdx] && (
-          <TouchableOpacity style={[s.actionBtn, { backgroundColor: '#0057e7' }]} onPress={() => recordPassengers(stops[currentStopIdx])}>
-            <Text style={s.actionBtnText}>✓ Valider arrêt {currentStopIdx + 1}/{stops.length}</Text>
+
+        {/* Boarding counter */}
+        <View style={s.counterCard}>
+          <Text style={s.counterLabel}>MONTANTS</Text>
+          <View style={s.counterRow}>
+            <TouchableOpacity style={s.counterBtn}
+              onPress={() => setBoardingVal(v => Math.max(0, v - 1))}>
+              <Text style={s.counterBtnText}>−</Text>
+            </TouchableOpacity>
+            <Text style={s.counterValue}>{boardingVal}</Text>
+            <TouchableOpacity style={[s.counterBtn, s.counterBtnPlus]}
+              onPress={() => setBoardingVal(v => v + 1)}>
+              <Text style={[s.counterBtnText, s.counterBtnTextPlus]}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Alighting counter */}
+        <View style={s.counterCard}>
+          <Text style={s.counterLabel}>DESCENDANTS</Text>
+          <View style={s.counterRow}>
+            <TouchableOpacity style={s.counterBtn}
+              onPress={() => setAlightingVal(v => Math.max(0, v - 1))}>
+              <Text style={s.counterBtnText}>−</Text>
+            </TouchableOpacity>
+            <Text style={s.counterValue}>{alightingVal}</Text>
+            <TouchableOpacity style={[s.counterBtn, s.counterBtnPlus]}
+              onPress={() => setAlightingVal(v => v + 1)}>
+              <Text style={[s.counterBtnText, s.counterBtnTextPlus]}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Total aboard */}
+        <View style={s.aboardCard}>
+          <Text style={s.aboardLabel}>À BORD</Text>
+          <Text style={s.aboardValue}>{aboard}</Text>
+          <Text style={s.aboardUnit}>passagers</Text>
+        </View>
+
+        {/* Next stop + validate */}
+        {nextStop ? (
+          <TouchableOpacity style={s.nextBtn} onPress={validateStop}>
+            <Text style={s.nextBtnText}>→ Prochain arrêt · {nextStop.name}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={[s.nextBtn, { backgroundColor: SUCCESS }]} onPress={endTrip}>
+            <Text style={s.nextBtnText}>✓ Terminer la course</Text>
           </TouchableOpacity>
         )}
-      </View>
 
-      <View style={[s.section, { marginBottom: 40 }]}>
-        <TouchableOpacity style={[s.actionBtn, { backgroundColor: '#e03150' }]} onPress={endTrip}>
-          <Text style={s.actionBtnText}>■ Terminer la course</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.actionBtn, { backgroundColor: '#f07d1a', marginTop: 8 }]}
-          onPress={() => router.push({ pathname: '/(app)/incident', params: { trip_id: id } })}
-        >
-          <Text style={s.actionBtnText}>⚠ Déclarer un incident</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        <View style={{ height: 80 }} />
+      </ScrollView>
+
+      {/* Incident FAB */}
+      <TouchableOpacity style={s.incidentFab}
+        onPress={() => router.push({ pathname: '/(app)/incident', params: { tripId } })}>
+        <Text style={s.incidentFabText}>⚠  INCIDENT</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f8fa' },
-  header: { backgroundColor: '#0d1117', padding: 20, paddingTop: 52 },
-  back: { marginBottom: 8 },
-  backText: { color: 'rgba(255,255,255,.6)', fontSize: 15 },
-  title: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  section: { margin: 16, backgroundColor: '#fff', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#dde2e8' },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#6b7685', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 12 },
-  counter: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  counterItem: { flex: 1 },
-  counterLabel: { fontSize: 13, color: '#6b7685', marginBottom: 8, textAlign: 'center' },
-  counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
-  counterBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#eef0f3', alignItems: 'center', justifyContent: 'center' },
-  counterBtnPlus: { backgroundColor: '#e8f0ff' },
-  counterBtnText: { fontSize: 22, fontWeight: '700', color: '#0d1117' },
-  counterValue: { fontSize: 28, fontWeight: '800', color: '#0d1117', minWidth: 40, textAlign: 'center' },
-  actionBtn: { borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
-  actionBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  screen: { flex: 1, backgroundColor: BG },
+  hero: { backgroundColor: INK, paddingHorizontal: 20, paddingTop: 52, paddingBottom: 20 },
+  backRow: { marginBottom: 12 },
+  backText: { color: 'rgba(255,255,255,.5)', fontFamily: 'SpaceMono', fontSize: 11, letterSpacing: 1 },
+  heroEyebrow: { fontFamily: 'SpaceMono', fontSize: 10, color: BRAND, letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 4 },
+  heroTitle: { fontSize: 26, fontWeight: '700', color: '#fff', marginBottom: 2 },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,.55)', marginBottom: 14 },
+  progressTrack: { height: 4, backgroundColor: 'rgba(255,255,255,.15)', borderRadius: 2 },
+  progressFill: { height: 4, backgroundColor: BRAND, borderRadius: 2 },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 14 },
+  stopCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1.5, borderColor: INK5, padding: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center' },
+  stopCardLeft: { flex: 1 },
+  stopCardEyebrow: { fontFamily: 'SpaceMono', fontSize: 9, color: INK3, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 },
+  stopCardName: { fontSize: 18, fontWeight: '700', color: INK },
+  stopCardRight: { },
+  stopCardTime: { fontFamily: 'SpaceMono', fontSize: 22, fontWeight: '700', color: BRAND },
+  counterCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1.5, borderColor: INK5, padding: 16, marginBottom: 10 },
+  counterLabel: { fontFamily: 'SpaceMono', fontSize: 9, color: INK3, letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 12, textAlign: 'center' },
+  counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20 },
+  counterBtn: { width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, borderColor: INK5, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  counterBtnPlus: { backgroundColor: BRAND, borderColor: BRAND },
+  counterBtnText: { fontSize: 28, fontWeight: '300', color: INK, lineHeight: 32 },
+  counterBtnTextPlus: { color: '#fff', fontWeight: '700' },
+  counterValue: { fontSize: 48, fontWeight: '700', color: INK, minWidth: 70, textAlign: 'center' },
+  aboardCard: { backgroundColor: INK, borderRadius: 14, padding: 16, marginBottom: 14, alignItems: 'center' },
+  aboardLabel: { fontFamily: 'SpaceMono', fontSize: 9, color: 'rgba(255,255,255,.5)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 4 },
+  aboardValue: { fontSize: 64, fontWeight: '800', color: '#fff', lineHeight: 70 },
+  aboardUnit: { fontSize: 13, color: 'rgba(255,255,255,.5)', marginTop: 2 },
+  nextBtn: { backgroundColor: BRAND, borderRadius: 14, paddingVertical: 18, alignItems: 'center', marginBottom: 8 },
+  nextBtnText: { fontFamily: 'SpaceMono', fontSize: 13, fontWeight: '700', color: '#fff', letterSpacing: 1.5, textTransform: 'uppercase' },
+  incidentFab: { backgroundColor: DANGER, paddingVertical: 18, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' },
+  incidentFabText: { fontFamily: 'SpaceMono', fontSize: 13, fontWeight: '700', color: '#fff', letterSpacing: 2.5, textTransform: 'uppercase' },
 });

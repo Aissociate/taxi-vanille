@@ -3,8 +3,8 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'Taxi Vanille Mayotte — Back-office',
-  description: 'Gestion opérationnelle Taxi Vanille Mayotte',
+  title: 'Taxi Vanille — Direction & Coordinateurs',
+  description: 'Plateforme de gestion Taxi Vanille Mayotte',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

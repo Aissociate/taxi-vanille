@@ -1,54 +1,73 @@
 'use client';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <div className="text-2xl font-bold text-blue-600">{value}</div>
-      <div className="text-sm font-medium text-gray-700 mt-1">{label}</div>
-      {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
-    </div>
-  );
-}
+import { STATS, DAYS } from '@/lib/data';
+import { PageBar, Eyebrow, KpiCard, Sparkline } from '@/components/ui';
 
 export default function DashboardPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['kpi'],
-    queryFn: () => api.get('/kpi/dashboard').then(r => r.data),
-  });
-
-  if (isLoading) return <div className="p-8 text-gray-500">Chargement...</div>;
-
-  const s = data?.summary ?? {};
-
   return (
-    <div className="p-8 max-w-5xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Tableau de bord</h1>
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <PageBar title="Tableau de bord KPI" sub="Direction · Semaine 19"
+        actions={[{l:'Jour'},{l:'Semaine'},{l:'Mois'},{l:'Exporter'}]}/>
+      <div className="scroll" style={{padding:24,display:'flex',flexDirection:'column',gap:16}}>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <StatCard label="Courses terminées" value={s.completed_trips ?? 0} sub="30 derniers jours" />
-        <StatCard label="Chiffre d'affaires" value={`${s.total_revenue ?? 0} €`} sub="30 derniers jours" />
-        <StatCard label="Passagers transportés" value={s.total_passengers ?? 0} sub="30 derniers jours" />
-        <StatCard label="Prix moyen / course" value={`${s.avg_revenue_per_trip ?? 0} €`} />
-        <StatCard label="Incidents déclarés" value={s.incidents ?? 0} sub="30 derniers jours" />
-        <StatCard label="Taux complétion" value={s.total_trips ? `${Math.round(s.completed_trips / s.total_trips * 100)}%` : '—'} />
-      </div>
-
-      {data?.by_driver?.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">Courses par chauffeur</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={data.by_driver}>
-              <XAxis dataKey="driver_number" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="trips_count" fill="#0057e7" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div style={{display:'grid',gap:16,gridTemplateColumns:'repeat(4,1fr)'}}>
+          <KpiCard label="CA semaine" value="12 480 €" delta="↑ 6 % vs S-1"/>
+          <KpiCard label="Courses réalisées" value="187" delta="↑ 12 vs S-1"/>
+          <KpiCard label="Ponctualité" value="94,2 %" delta="retards >10 mn : 18"/>
+          <KpiCard label="Incidents ouverts" value="1" delta="D7 · COMBO Said · panne moteur" danger/>
         </div>
-      )}
+
+        <div style={{display:'grid',gap:16,gridTemplateColumns:'2fr 1fr'}}>
+          <div className="card" style={{padding:18}}>
+            <Eyebrow>Chiffre d'affaires · semaine / mois / année</Eyebrow>
+            <Sparkline/>
+            <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--font-mono)',
+              fontSize:10,color:'var(--stroke2)',marginTop:4}}>
+              {DAYS.map(d => <span key={d}>{d.split(' ')[0]}</span>)}
+            </div>
+          </div>
+          <div className="card" style={{padding:18}}>
+            <Eyebrow>Trajets non effectués · 30 j</Eyebrow>
+            <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:8}}>
+              <div style={{fontFamily:'var(--font-mono)',fontSize:32,fontWeight:700}}>24</div>
+              <span style={{fontSize:11,color:'var(--stroke2)'}}>panne véhicule = cause #1</span>
+            </div>
+            <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:8}}>
+              {[['Voiture en panne',9,'var(--danger)'],['Absence chauffeur',7,'var(--warn)'],['Météo / route bloquée',5,'var(--info)'],['Autre',3,'var(--stroke2)']].map(([l,n,c])=>(
+                <div key={String(l)} style={{display:'grid',gridTemplateColumns:'1fr 120px 24px',gap:8,alignItems:'center',fontSize:12}}>
+                  <span>{l}</span>
+                  <div style={{height:8,background:'var(--stroke4)',borderRadius:2,position:'relative'}}>
+                    <div style={{position:'absolute',inset:0,width:`${(Number(n)/9)*100}%`,background:String(c),borderRadius:2}}/>
+                  </div>
+                  <span style={{fontFamily:'var(--font-mono)',fontWeight:700,textAlign:'right'}}>{n}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{padding:18}}>
+          <Eyebrow>Trajets réalisés par chauffeur · L4 · mars 2026</Eyebrow>
+          <div style={{marginTop:14,display:'flex',flexDirection:'column',gap:10}}>
+            {STATS.parCh.map(r => (
+              <div key={r.code} style={{display:'grid',gridTemplateColumns:'220px 1fr 60px',alignItems:'center',gap:10}}>
+                <span style={{fontSize:12}}>{r.code} · {r.nom}</span>
+                <div style={{height:14,background:'var(--stroke4)',borderRadius:3}}>
+                  <div style={{width:`${(r.trajets/84)*100}%`,height:'100%',background:'var(--stroke)',borderRadius:3}}/>
+                </div>
+                <span style={{fontFamily:'var(--font-mono)',fontSize:12,fontWeight:700,textAlign:'right'}}>{r.trajets}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:'grid',gap:16,gridTemplateColumns:'repeat(4,1fr)'}}>
+          <KpiCard label="Trajets théoriques" value="642" delta="• 24 non eff."/>
+          <KpiCard label="Taux réalisation" value="96,3 %" delta="objectif 95 %"/>
+          <KpiCard label="Voy. moyen / trajet" value="13,6" delta="objectif 12,0"/>
+          <KpiCard label="Voy. moyen / jour" value="271" delta="31 j · L4 mars 2026"/>
+        </div>
+
+      </div>
     </div>
   );
 }
