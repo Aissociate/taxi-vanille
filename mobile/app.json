@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Taxi Vanille",
+    "slug": "taxivanille",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0d1117"
+    },
+    "android": {
+      "package": "yt.taxivanille.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "RECORD_AUDIO",
+        "INTERNET"
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-location",
+      ["expo-av", { "microphonePermission": "Autoriser l'enregistrement audio pour les incidents" }],
+      ["expo-notifications", { "color": "#0057e7" }]
+    ],
+    "scheme": "taxivanille"
+  }
+}

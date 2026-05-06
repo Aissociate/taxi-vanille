@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taxi Vanille — App Android Chauffeur · Wireframes</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="wireframe-base.css">
+</head>
+<body>
+
+  <header class="wf-page-banner">
+    <div class="brand">
+      <img class="logo" src="assets/logo-aissociate.png" alt="">
+      <div class="stack">
+        <b>Taxi Vanille</b>
+        <span>Aissociate · wireframes</span>
+      </div>
+    </div>
+    <div>
+      <h1>App Android — Chauffeur</h1>
+      <div class="meta" style="margin-top:4px">5 écrans · 3 variantes de layout</div>
+    </div>
+    <div class="meta">v0.1 · low-fi</div>
+  </header>
+
+  <nav class="wf-toc">
+    <a href="#sec-login">01 Login PIN</a>
+    <a href="#sec-planning">02 Planning</a>
+    <a href="#sec-course">03 Course</a>
+    <a href="#sec-incident">04 Incident</a>
+    <a href="#sec-offline">05 Hors-ligne / sync</a>
+  </nav>
+
+  <main class="wf-grid-page">
+
+    <section id="sec-login" data-screen-label="01 Login">
+      <div class="wf-section-header">
+        <span class="num">01</span>
+        <h2>Login — numéro chauffeur + PIN</h2>
+        <span class="wf-hand-note" style="margin-left:auto">— offline-first, gros pavés</span>
+      </div>
+      <div id="login-row" class="wf-variation-row"></div>
+    </section>
+
+    <section id="sec-planning" data-screen-label="02 Planning">
+      <div class="wf-section-header">
+        <span class="num">02</span>
+        <h2>Planning du jour</h2>
+        <span class="wf-hand-note" style="margin-left:auto">— statuts colorés, lecture rapide en conduite</span>
+      </div>
+      <div id="planning-row" class="wf-variation-row"></div>
+    </section>
+
+    <section id="sec-course" data-screen-label="03 Course">
+      <div class="wf-section-header">
+        <span class="num">03</span>
+        <h2>Course en cours — compteur passagers</h2>
+        <span class="wf-hand-note" style="margin-left:auto">— + / − géants, gants OK</span>
+      </div>
+      <div id="course-row" class="wf-variation-row"></div>
+    </section>
+
+    <section id="sec-incident" data-screen-label="04 Incident">
+      <div class="wf-section-header">
+        <span class="num">04</span>
+        <h2>Modal incident — pictos + voix 60 s</h2>
+        <span class="wf-hand-note" style="margin-left:auto">— déclenché par le bandeau rouge permanent</span>
+      </div>
+      <div id="incident-row" class="wf-variation-row"></div>
+    </section>
+
+    <section id="sec-offline" data-screen-label="05 Offline">
+      <div class="wf-section-header">
+        <span class="num">05</span>
+        <h2>Hors-ligne &amp; synchronisation</h2>
+        <span class="wf-hand-note" style="margin-left:auto">— SQLite local, sync auto au retour réseau</span>
+      </div>
+      <div id="offline-row" class="wf-variation-row"></div>
+    </section>
+
+    <section style="grid-column:1/-1; padding-top:32px; border-top:1.5px solid var(--wf-stroke-3); display:flex; gap:32px; flex-wrap:wrap">
+      <div style="flex:1; min-width:280px">
+        <div class="wf-eyebrow">Légende</div>
+        <ul style="font-size:13px; color:var(--wf-stroke-2); line-height:1.7; padding-left:18px; margin-top:8px">
+          <li>Wireframes structurés — pas de couleurs hors accent orange Aissociate &amp; rouge incident.</li>
+          <li>Cibles tactiles ≥ 44 px (gants &amp; conduite).</li>
+          <li>Bandeau rouge incident toujours visible pendant une course (variantes : bandeau, FAB).</li>
+          <li>Texte écrit à la main = annotation produit, à retirer en hi-fi.</li>
+        </ul>
+      </div>
+      <div style="flex:1; min-width:280px">
+        <div class="wf-eyebrow">À explorer ensuite</div>
+        <ul style="font-size:13px; color:var(--wf-stroke-2); line-height:1.7; padding-left:18px; margin-top:8px">
+          <li>Mode soleil / haut contraste (toggle dans Tweaks).</li>
+          <li>Confirmations haptiques + sonores sur PARTIR.</li>
+          <li>Recap fin de course avec total passagers/km.</li>
+          <li>Notifications FCM : nouveau planning, course annulée.</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="phone-frame.jsx"></script>
+  <script type="text/babel" src="android-screens.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "showAnnotations": true,
+      "highContrast": false,
+      "phoneScale": 1
+    }/*EDITMODE-END*/;
+
+    function applyTweaks(t) {
+      document.documentElement.style.setProperty('--wf-paper', t.highContrast ? '#fff' : '#fbfaf8');
+      document.documentElement.style.setProperty('--wf-stroke', t.highContrast ? '#000' : '#2a2627');
+      document.documentElement.style.setProperty('--wf-stroke-3', t.highContrast ? '#444' : '#b9b3b4');
+      document.body.classList.toggle('hide-annotations', !t.showAnnotations);
+    }
+
+    function App() {
+      const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      useEffect(() => applyTweaks(tweaks), [tweaks]);
+
+      return (
+        <TweaksPanel title="Tweaks">
+          <TweakSection label="Affichage">
+            <TweakToggle label="Annotations manuscrites" value={tweaks.showAnnotations} onChange={v => setTweak('showAnnotations', v)} />
+            <TweakToggle label="Mode haut contraste" value={tweaks.highContrast} onChange={v => setTweak('highContrast', v)} />
+          </TweakSection>
+          <TweakSection label="Téléphones">
+            <TweakSlider label="Échelle" min={0.7} max={1.2} step={0.05} value={tweaks.phoneScale} onChange={v => setTweak('phoneScale', v)} />
+          </TweakSection>
+        </TweaksPanel>
+      );
+    }
+
+    // ------ Render variation rows ------
+    const rows = [
+      ['login-row', [
+        [LoginA, 'A · Pavé numérique compact', 'Logo + 3 chiffres ID + 4 PIN. Tout sur un écran sans scroll.'],
+        [LoginB, 'B · Bienvenue + clavier rond', 'Salutation, ID en gros, PIN sur clavier rond plein-écran.'],
+        [LoginC, 'C · Carte unique tout-en-un', 'ID + PIN dans une carte. Touche OK intégrée au clavier.'],
+      ]],
+      ['planning-row', [
+        [PlanningA, 'A · Liste simple à barres latérales', 'Cartes empilées, barre gauche colorée par statut.'],
+        [PlanningB, 'B · Timeline avec rail vertical', 'Lecture chronologique, passé/présent/futur évidents.'],
+        [PlanningC, 'C · Hero "maintenant" + suite', 'Course active en avant, le reste replié dessous.'],
+      ]],
+      ['course-row', [
+        [CourseA, 'A · Compteurs côte-à-côte', 'Deux compteurs ronds, total passagers, gros bouton PARTIR.'],
+        [CourseB, 'B · Split-screen vertical', 'Écran coupé en deux : Montants à gauche, Descendants à droite, chiffres XL.'],
+        [CourseC, 'C · Liste d\'arrêts inline', 'Compteurs intégrés à l\'arrêt actif. Vue d\'ensemble de la course.'],
+      ]],
+      ['incident-row', [
+        [IncidentA, 'A · Bottom-sheet 9 pictos', 'Modal qui remonte. Type + voix sur le même écran.'],
+        [IncidentB, 'B · Pleine page liste', 'Pictos en liste large + libellés. Étape 1 → 2.'],
+        [IncidentC, 'C · Type + voix simultanés', 'Chips type, gros bouton d\'enregistrement, waveform live.'],
+      ]],
+      ['offline-row', [
+        [OfflineA, 'A · Bandeau warning + planning', 'Le chauffeur reste sur son flux normal. Bandeau jaune persistant.'],
+        [OfflineB, 'B · Empty state rassurant', 'Page dédiée. File de sync visible. Idéal en cas de coupure longue.'],
+        [OfflineC, 'C · Sync bar de progression', 'Au retour du réseau : barre orange + détail des éléments envoyés.'],
+      ]],
+    ];
+
+    rows.forEach(([id, vars]) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const root = ReactDOM.createRoot(el);
+      root.render(
+        <>
+          {vars.map(([Comp, label, desc], i) => (
+            <PhoneFrame key={i} label={label} sublabel={desc}>
+              <Comp />
+            </PhoneFrame>
+          ))}
+        </>
+      );
+    });
+
+    // Mount tweaks panel
+    const panelMount = document.createElement('div');
+    document.body.appendChild(panelMount);
+    ReactDOM.createRoot(panelMount).render(<App />);
+
+    // CSS toggles
+    const style = document.createElement('style');
+    style.textContent = `.hide-annotations .wf-hand-note, .hide-annotations .annotate { display:none !important; }`;
+    document.head.appendChild(style);
+  </script>
+
+  <style id="__om-edit-overrides"></style>
+</body>
+</html>

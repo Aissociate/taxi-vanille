@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taxi Vanille — App Chauffeur</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#F26419;--brand-d:#D4500E;--brand-light:#FFF3ED;
+  --danger:#D13A2A;--danger-d:#B02F20;
+  --success:#2E8B57;--success-light:#EAF4EE;--warn:#E8A523;
+  --ink:#1A1718;--ink2:#393536;--ink3:#6B6566;--ink4:#B9B3B4;--ink5:#E8E5E6;
+  --bg:#FAFAF9;
+  --font:'Inter',-apple-system,sans-serif;
+  --mono:'Space Mono',ui-monospace,monospace;
+}
+body{background:#e8e5e6;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;font-family:var(--font);padding:32px 16px 64px;gap:32px;flex-wrap:wrap}
+
+/* Phone frame */
+.phone{
+  width:390px;background:#fff;border-radius:48px;
+  box-shadow:0 0 0 10px #1a1718,0 24px 60px rgba(0,0,0,.4),0 8px 20px rgba(0,0,0,.25);
+  overflow:hidden;position:relative;flex-shrink:0;
+  display:flex;flex-direction:column;
+}
+.status-bar{
+  background:var(--screen-bg,#fff);color:var(--screen-color,var(--ink));
+  padding:14px 24px 10px;display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;font-weight:600;font-family:var(--mono);flex-shrink:0;
+}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:10px;background:#1a1718;border-radius:0 0 14px 14px;z-index:10}
+.screen{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:780px}
+
+/* Offline banner */
+.offline-banner{
+  background:var(--warn);color:#fff;padding:12px 20px;text-align:center;
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;gap:8px;flex-shrink:0;
+}
+
+/* Page header */
+.page-head{padding:18px 20px 14px;background:var(--screen-bg,#fff);flex-shrink:0}
+.page-head .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px}
+.page-head h1{font-size:26px;font-weight:700;color:var(--ink)}
+.page-head .badge{float:right;font-family:var(--mono);font-size:13px;color:var(--ink3);margin-top:6px}
+
+/* Scroll area */
+.scroll{flex:1;overflow-y:auto;padding:12px 16px;background:var(--bg)}
+.scroll::-webkit-scrollbar{display:none}
+
+/* Course card */
+.course-card{
+  background:#fff;border-radius:14px;border:1.5px solid var(--ink5);
+  padding:18px 16px 16px;margin-bottom:12px;position:relative;overflow:hidden;
+  cursor:pointer;transition:box-shadow .15s;
+  display:flex;flex-direction:column;gap:6px;
+}
+.course-card:active{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.course-card .side-bar{position:absolute;left:0;top:0;bottom:0;width:5px}
+.course-card .time{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--ink)}
+.course-card .client{font-size:15px;font-weight:600;color:var(--ink);margin-top:2px}
+.course-card .meta{font-size:12px;color:var(--ink3)}
+.course-card .status-pill{
+  position:absolute;top:18px;right:16px;
+  display:flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  color:var(--ink3);
+}
+.course-card .status-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ink4)}
+.course-card.done .side-bar{background:var(--success)}
+.course-card.done .time,.course-card.done .client{color:var(--ink3)}
+.course-card.done .status-pill{color:var(--success)}.course-card.done .status-pill .dot{background:var(--success)}
+.course-card.next{border-color:var(--brand);box-shadow:0 2px 12px rgba(242,100,25,.15)}
+.course-card.next .side-bar{background:var(--brand)}
+.course-card.next .time{color:var(--brand)}
+.course-card.next .status-pill{color:var(--brand)}.course-card.next .status-pill .dot{background:var(--brand)}
+.course-card.live{border-color:var(--brand);box-shadow:0 2px 12px rgba(242,100,25,.15)}
+.course-card.live .side-bar{background:var(--brand)}
+.course-card.live .time{color:var(--brand)}
+.course-card.live .status-pill{color:var(--brand)}.course-card.live .status-pill .dot{background:var(--brand);animation:pulse .9s infinite}
+.course-card.offline-pending .status-pill{color:var(--warn)}.course-card.offline-pending .status-pill .dot{background:var(--warn)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Incident FAB */
+.incident-fab{
+  background:var(--danger);color:#fff;border:none;
+  padding:20px 24px;font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+  flex-shrink:0;transition:background .12s;
+}
+.incident-fab:active{background:var(--danger-d)}
+
+/* ─── LOGIN ──────────────────────────────────────── */
+.login-screen{flex:1;display:flex;flex-direction:column;align-items:center;padding:40px 28px 28px;background:#fff}
+.login-section{width:100%;margin-top:28px}
+.login-label{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px}
+.driver-input{width:100%;border:1.5px solid var(--ink);border-radius:8px;padding:14px 16px;font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:.12em;color:var(--ink);background:#fff}
+.pin-dots{display:flex;gap:10px;margin-bottom:16px}
+.pin-dot{flex:1;height:64px;border:1.5px solid var(--ink5);border-radius:10px;display:flex;align-items:center;justify-content:center;background:#fff}
+.pin-dot.filled{border-color:var(--ink);background:var(--ink)}
+.pin-dot .dot-inner{width:12px;height:12px;border-radius:50%;background:#fff}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%}
+.numpad-key{
+  height:68px;border:1.5px solid var(--ink5);border-radius:12px;background:#fff;
+  font-size:24px;font-weight:600;color:var(--ink);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background .1s;font-family:var(--font);
+}
+.numpad-key:active{background:var(--ink5)}
+.numpad-key.del{font-size:18px;color:var(--ink3)}
+.numpad-key.zero{grid-column:2}
+.login-btn{
+  width:100%;margin-top:20px;background:var(--brand);color:#fff;border:none;border-radius:14px;
+  padding:20px;font-size:16px;font-weight:700;font-family:var(--font);cursor:pointer;letter-spacing:.02em;
+  transition:background .12s;
+}
+.login-btn:active{background:var(--brand-d)}
+.login-hint{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);text-align:center;margin-top:10px}
+
+/* ─── DÉMARRAGE DE COURSE ────────────────────────── */
+.depart-screen{flex:1;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+.depart-hero{background:var(--ink);padding:20px;flex-shrink:0}
+.depart-hero .eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink4);margin-bottom:6px}
+.depart-hero .heure{font-family:var(--mono);font-size:42px;font-weight:700;color:#fff;line-height:1}
+.depart-hero .direction{font-size:15px;font-weight:600;color:rgba(255,255,255,.8);margin-top:6px}
+.depart-hero .vehicle-row{display:flex;align-items:center;gap:8px;margin-top:12px}
+.depart-hero .vehicle-badge{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink);background:#fff;padding:4px 10px;border-radius:4px;letter-spacing:.06em}
+.depart-hero .gps-badge{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.6)}
+.gps-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;flex-shrink:0;animation:pulse .9s infinite}
+
+.stop-timeline{flex:1;overflow-y:auto;padding:16px}
+.stop-timeline::-webkit-scrollbar{display:none}
+.stop-row{display:flex;align-items:flex-start;gap:12px;margin-bottom:0;position:relative}
+.stop-row::before{content:'';position:absolute;left:11px;top:22px;bottom:-2px;width:2px;background:var(--ink5)}
+.stop-row:last-child::before{display:none}
+.stop-dot{width:24px;height:24px;border-radius:50%;border:2px solid var(--ink5);background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:4px;z-index:1}
+.stop-dot.first{border-color:var(--brand);background:var(--brand)}
+.stop-dot.last{border-color:var(--ink);background:var(--ink)}
+.stop-dot.done{border-color:var(--success);background:var(--success)}
+.stop-dot svg{display:block}
+.stop-info{flex:1;padding-bottom:18px}
+.stop-name{font-size:14px;font-weight:600;color:var(--ink);margin-top:5px}
+.stop-sub{font-size:11px;color:var(--ink3);margin-top:2px;font-family:var(--mono)}
+.stop-tag{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-top:4px;font-weight:700}
+.stop-tag.terminus{background:var(--brand-light);color:var(--brand)}
+.stop-tag.principal{background:var(--ink5);color:var(--ink2)}
+
+.checklist-block{margin:0 16px 16px;padding:16px;background:#fff;border-radius:14px;border:1.5px solid var(--ink5)}
+.checklist-block .check-title{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px}
+.check-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--ink5)}
+.check-item:last-child{border-bottom:none;padding-bottom:0}
+.check-box{width:22px;height:22px;border-radius:6px;border:2px solid var(--ink5);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .1s}
+.check-box.checked{border-color:var(--success);background:var(--success)}
+.check-label{font-size:13px;color:var(--ink);font-weight:500}
+
+.depart-cta{padding:16px;background:#fff;border-top:1.5px solid var(--ink5);flex-shrink:0}
+.depart-big-btn{
+  width:100%;background:var(--brand);color:#fff;border:none;border-radius:16px;
+  padding:22px;font-size:17px;font-weight:700;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:background .12s;
+}
+.depart-big-btn:active{background:var(--brand-d)}
+.depart-big-btn.ready{background:var(--success)}
+
+/* ─── COURSE EN COURS ────────────────────────────── */
+.course-screen{flex:1;display:flex;flex-direction:column;background:#fff}
+.course-header{padding:16px 20px;border-bottom:1px solid var(--ink5)}
+.course-header .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3)}
+.course-header h2{font-size:24px;font-weight:700;margin-top:4px}
+.stop-card{margin:16px;padding:18px;border:1.5px solid var(--ink5);border-radius:14px;background:#fff}
+.stop-card .stop-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.stop-card .stop-name{font-size:22px;font-weight:700;color:var(--ink)}
+.stop-card .stop-meta{font-size:12px;color:var(--ink3);margin-top:4px}
+.counter-card{margin:0 16px;padding:20px 16px;border:1.5px solid var(--ink5);border-radius:14px;background:#fff}
+.counter-cols{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.counter-col{display:flex;flex-direction:column;align-items:center;padding:0 8px}
+.counter-col+.counter-col{border-left:1px solid var(--ink5)}
+.counter-label{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px}
+.counter-row{display:flex;align-items:center;gap:14px}
+.counter-btn{
+  width:56px;height:56px;border-radius:50%;border:2px solid var(--ink);background:#fff;
+  font-size:28px;font-weight:300;color:var(--ink);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background .1s;flex-shrink:0;
+}
+.counter-btn.plus{background:var(--ink);color:#fff;border-color:var(--ink)}
+.counter-btn:active{opacity:.7}
+.counter-val{font-size:42px;font-weight:700;font-family:var(--mono);color:var(--ink);min-width:40px;text-align:center}
+.total-card{margin:14px 16px 0;padding:18px 20px;border:1.5px solid var(--ink);border-radius:14px;background:#fff;display:flex;justify-content:space-between;align-items:center}
+.total-card .total-num{font-size:48px;font-weight:700;font-family:var(--mono);color:var(--ink)}
+.total-card .total-label{font-size:13px;color:var(--ink3);align-self:flex-end;padding-bottom:6px}
+.depart-btn{
+  margin:16px;background:var(--brand);color:#fff;border:none;border-radius:14px;
+  padding:20px;font-size:16px;font-weight:700;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:background .12s;
+}
+.depart-btn:active{background:var(--brand-d)}
+
+/* ─── INCIDENT MODAL ─────────────────────────────── */
+.incident-sheet{
+  position:absolute;inset:0;background:rgba(20,15,16,.35);z-index:50;
+  display:flex;flex-direction:column;justify-content:flex-end;
+}
+.incident-sheet .sheet-body{
+  background:#fff;border-radius:24px 24px 0 0;padding:0 0 20px;
+  max-height:95%;overflow-y:auto;
+}
+.sheet-handle{width:40px;height:4px;border-radius:2px;background:var(--ink5);margin:12px auto 20px}
+.sheet-photo{width:100%;height:120px;background:var(--ink5);display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:28px;flex-shrink:0}
+.incident-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 16px}
+.incident-btn{
+  border:1.5px solid var(--ink5);border-radius:14px;padding:16px 8px 14px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;
+  background:#fff;transition:all .12s;
+}
+.incident-btn.selected{border-color:var(--brand);background:var(--brand-light)}
+.incident-btn:active{background:var(--ink5)}
+.incident-icon{font-size:24px;line-height:1}
+.incident-name{font-size:11px;font-weight:600;color:var(--ink);text-align:center;line-height:1.2}
+.voice-section{margin:20px 16px 0}
+.voice-label{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px}
+.voice-row{display:flex;align-items:center;gap:12px;border:1.5px solid var(--ink5);border-radius:12px;padding:14px 14px}
+.voice-rec-btn{width:48px;height:48px;border-radius:50%;background:var(--danger);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.voice-rec-btn.recording{animation:rec-pulse 1s infinite}
+@keyframes rec-pulse{0%,100%{box-shadow:0 0 0 0 rgba(209,58,42,.5)}50%{box-shadow:0 0 0 10px rgba(209,58,42,0)}}
+.waveform{flex:1;display:flex;align-items:center;gap:2px;height:32px}
+.wf-bar{width:3px;border-radius:2px;background:var(--ink5)}
+.wf-bar.played{background:var(--ink3)}
+.voice-time{font-family:var(--mono);font-size:11px;color:var(--ink3);white-space:nowrap}
+.sheet-actions{display:grid;grid-template-columns:1fr 2fr;gap:10px;padding:16px 16px 4px;margin-top:4px}
+.sheet-cancel{background:#fff;border:2px solid var(--ink);border-radius:14px;padding:18px;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font)}
+.sheet-send{background:var(--danger);border:none;border-radius:14px;padding:18px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:var(--font);transition:background .12s}
+.sheet-send:active{background:var(--danger-d)}
+
+/* Demo switcher */
+.switcher{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
+.sw-btn{background:#fff;border:1.5px solid #b9b3b4;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;color:#393536;transition:all .12s}
+.sw-btn.active,.sw-btn:hover{background:#393536;color:#fff;border-color:#393536}
+.demo-label{text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:#6b6566;letter-spacing:.12em;text-transform:uppercase;margin-bottom:24px}
+</style>
+</head>
+<body>
+
+<div style="width:100%;max-width:1200px">
+  <div class="switcher" id="switcher">
+    <button class="sw-btn active" onclick="showScreen('login')">01 · Login PIN</button>
+    <button class="sw-btn" onclick="showScreen('planning')">02 · Planning du jour</button>
+    <button class="sw-btn" onclick="showScreen('departure')">03 · Démarrage de course</button>
+    <button class="sw-btn" onclick="showScreen('course')">04 · Course en cours</button>
+    <button class="sw-btn" onclick="showScreen('incident')">05 · Signaler un incident</button>
+    <button class="sw-btn" onclick="showScreen('offline')">06 · Mode hors-ligne</button>
+  </div>
+  <div class="demo-label" id="demo-label">01 · Login — identifiant chauffeur + PIN</div>
+
+  <div style="display:flex;justify-content:center">
+    <div class="phone" id="phone">
+      <div class="notch"></div>
+      <div class="status-bar" id="status-bar">
+        <span>9:41</span>
+        <span>4G ▪</span>
+      </div>
+      <div class="screen" id="screen-root"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ──────────────────────────────────────────────────────────────
+const DRIVER = {
+  code: 'D1',
+  nom: 'MOHAMED Ali',
+  tel: '06 39 40 35 35',
+  vehicule: 'GR-558-LA',
+  ligne: 'L3',
+  pin: '1234',
+};
+
+// L3 — Doujani ↔ Passot La Barge (via M'Tsapéré)
+const STOPS_AM = [
+  { name:'Doujani',            sub:'Terminus départ',    tag:'terminus', heure:'05:00' },
+  { name:'Kawéni — RN1',       sub:'Arrêt principal',    tag:'principal',heure:'05:08' },
+  { name:"M'Tsapéré Mairie",   sub:'Correspondance',     tag:'principal',heure:'05:18' },
+  { name:'Mamoudzou Centre',   sub:'Colas / Préfecture', tag:'principal',heure:'05:28' },
+  { name:'Majicavo Carrefour', sub:'Arrêt secondaire',   tag:null,       heure:'05:38' },
+  { name:'Bandraboua',         sub:'Marché',             tag:'principal',heure:'05:50' },
+  { name:'Passot La Barge',    sub:'Terminus arrivée',   tag:'terminus', heure:'06:10' },
+];
+const STOPS_PM = [
+  { name:'Doujani',            sub:'Terminus départ',    tag:'terminus', heure:'14:40' },
+  { name:'Kawéni — RN1',       sub:'Arrêt principal',    tag:'principal',heure:'14:48' },
+  { name:"M'Tsapéré Mairie",   sub:'Correspondance',     tag:'principal',heure:'14:58' },
+  { name:'Mamoudzou Centre',   sub:'Colas / Préfecture', tag:'principal',heure:'15:10' },
+  { name:'Majicavo Carrefour', sub:'Arrêt secondaire',   tag:null,       heure:'15:22' },
+  { name:'Bandraboua',         sub:'Marché',             tag:'principal',heure:'15:35' },
+  { name:'Passot La Barge',    sub:'Terminus arrivée',   tag:'terminus', heure:'16:00' },
+];
+
+const COURSES_JOUR = [
+  { id:'AM1', time:'05:00', label:'AM · Aller',   direction:'Doujani → Passot La Barge', meta:'7 arrêts · L3', status:'done',    pill:'TERMINÉ' },
+  { id:'AM2', time:'06:30', label:'AM · Retour',  direction:'Passot La Barge → Doujani', meta:'7 arrêts · L3', status:'done',    pill:'TERMINÉ' },
+  { id:'AM3', time:'08:10', label:'AM · Fin serv',direction:'Retour dépôt Doujani',       meta:'Fin service AM',status:'done',    pill:'TERMINÉ' },
+  { id:'PM1', time:'14:40', label:'PM · Aller',   direction:'Doujani → Passot La Barge', meta:'7 arrêts · L3', status:'next',    pill:'PROCHAIN' },
+  { id:'PM2', time:'16:20', label:'PM · Retour',  direction:'Passot La Barge → Doujani', meta:'7 arrêts · L3', status:'planned', pill:'PLANIFIÉ' },
+  { id:'PM3', time:'18:10', label:'PM · Fin serv',direction:'Retour dépôt Doujani',       meta:'Fin service PM',status:'planned', pill:'PLANIFIÉ' },
+];
+
+const INCIDENTS = [
+  { icon:'✕', name:'Accident' },
+  { icon:'⚙', name:'Panne' },
+  { icon:'⏱', name:'Retard', selected:true },
+  { icon:'⊖', name:'Voie bloquée' },
+  { icon:'✋', name:'Passager refusé' },
+  { icon:'🛡', name:'Sécurité' },
+  { icon:'☂', name:'Météo' },
+  { icon:'👤', name:'Passager absent' },
+  { icon:'···', name:'Autre' },
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────
+let pinDigits = [1,2];
+let boarding = 0;
+let alighting = 0;
+let currentStop = 1; // index in STOPS_PM
+let incidentSel = 2;
+let recording = false;
+let checks = [false, false, false, false];
+
+// ─── RENDER ──────────────────────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.sw-btn').forEach(b=>b.classList.remove('active'));
+  const btns = document.querySelectorAll('.sw-btn');
+  const names = ['login','planning','departure','course','incident','offline'];
+  const labels = [
+    '01 · Login — identifiant chauffeur + PIN',
+    '02 · Planning du jour · L3 · vendredi 8 mai',
+    '03 · Démarrage de course · PM 14:40 Doujani → Passot',
+    '04 · Course en cours · arrêt 2 / 7 · compteur passagers',
+    '05 · Signaler un incident',
+    '06 · Mode hors-ligne + synchronisation',
+  ];
+  const idx = names.indexOf(name);
+  if(idx>=0){btns[idx].classList.add('active');document.getElementById('demo-label').textContent=labels[idx]}
+  const root = document.getElementById('screen-root');
+  const sb = document.getElementById('status-bar');
+  sb.style.setProperty('--screen-bg','#fff');
+  sb.style.color='var(--ink)';
+  root.innerHTML='';
+
+  if(name==='login')     renderLogin(root);
+  else if(name==='planning')  renderPlanning(root, false);
+  else if(name==='departure') renderDeparture(root);
+  else if(name==='course')    renderCourse(root);
+  else if(name==='incident')  renderIncident(root);
+  else if(name==='offline')   renderPlanning(root, true);
+}
+
+// ─── LOGIN ─────────────────────────────────────────────────────────────
+function renderLogin(root) {
+  const el = document.createElement('div');
+  el.className='login-screen';
+  el.innerHTML=`
+    <div style="width:72px;height:36px;background:#f4f2f2;border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:20px">
+      <span style="font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.12em;color:#817a7c;text-transform:uppercase">Taxi Vanille</span>
+    </div>
+    <div style="font-size:20px;font-weight:700;color:var(--ink);text-align:center">Espace Chauffeur</div>
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);margin-top:4px;text-align:center">Ligne 3 · Doujani ↔ La Barge</div>
+
+    <div class="login-section">
+      <div class="login-label">Code chauffeur</div>
+      <div class="driver-input" id="driver-disp" style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--ink3);font-size:13px">D</span>
+        <span style="font-size:26px">1</span>
+        <span style="flex:1"></span>
+        <span style="font-size:12px;color:var(--ink3);font-weight:400">MOHAMED Ali</span>
+      </div>
+    </div>
+
+    <div class="login-section">
+      <div class="login-label">Code PIN</div>
+      <div class="pin-dots" id="pin-dots"></div>
+    </div>
+
+    <div class="numpad" id="numpad">
+      ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="numpad-key" data-n="${n}">${n}</button>`).join('')}
+      <button class="numpad-key zero" data-n="0">0</button>
+      <button class="numpad-key del" data-n="del">⌫</button>
+    </div>
+
+    <button class="login-btn" id="login-btn">Se connecter</button>
+    <div class="login-hint">• Connexion hors-ligne disponible</div>
+  `;
+  root.appendChild(el);
+  renderPinDots();
+
+  el.querySelectorAll('.numpad-key').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const n=btn.dataset.n;
+      if(n==='del'){if(pinDigits.length>0)pinDigits.pop()}
+      else if(pinDigits.length<4){pinDigits.push(parseInt(n))}
+      renderPinDots();
+      if(pinDigits.length===4){
+        document.getElementById('login-btn').style.background='var(--success)';
+        setTimeout(()=>showScreen('planning'),400);
+      }
+    });
+  });
+  el.querySelector('#login-btn').addEventListener('click',()=>showScreen('planning'));
+}
+function renderPinDots(){
+  const c=document.getElementById('pin-dots');
+  if(!c)return;
+  c.innerHTML='';
+  for(let i=0;i<4;i++){
+    const d=document.createElement('div');
+    d.className='pin-dot'+(i<pinDigits.length?' filled':'');
+    if(i<pinDigits.length){const dot=document.createElement('div');dot.className='dot-inner';d.appendChild(dot)}
+    c.appendChild(d);
+  }
+}
+
+// ─── PLANNING ──────────────────────────────────────────────────────────
+function renderPlanning(root, offline) {
+  if(offline){
+    const banner=document.createElement('div');
+    banner.className='offline-banner';
+    banner.innerHTML='<span>⚠</span><span>Mode hors-ligne · 3 courses en attente de sync</span>';
+    root.appendChild(banner);
+  }
+
+  const head=document.createElement('div');
+  head.className='page-head';
+  head.innerHTML=`
+    <div class="eyebrow">Vendredi 8 mai 2026 · Ligne 3</div>
+    <h1>Planning du jour <span class="badge">${DRIVER.code}</span></h1>
+    <div style="font-size:12px;color:var(--ink3);margin-top:4px;font-family:var(--mono)">${DRIVER.vehicule} · ${DRIVER.nom}</div>
+  `;
+  root.appendChild(head);
+
+  if(offline){
+    const cacheNote=document.createElement('div');
+    cacheNote.style.cssText='margin:0 16px 8px;padding:10px 14px;border:1px dashed var(--ink4);border-radius:10px;font-size:12px;color:var(--ink3);background:var(--bg)';
+    cacheNote.textContent='Données en cache · dernière synchronisation 08:12';
+    root.appendChild(cacheNote);
+  }
+
+  const scroll=document.createElement('div');
+  scroll.className='scroll';
+
+  // Section AM
+  const secAM = document.createElement('div');
+  secAM.style.cssText='font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);padding:4px 2px 8px';
+  secAM.textContent='Service matin · 05:00 – 08:30';
+  scroll.appendChild(secAM);
+
+  COURSES_JOUR.forEach((c,i)=>{
+    const card=document.createElement('div');
+    const isOfflinePending = offline && c.status !== 'done' && i >= 3;
+    const cardClass = isOfflinePending ? 'course-card offline-pending' : `course-card ${c.status}`;
+    card.className=cardClass;
+    const dotColor = c.status==='done'?'var(--success)':c.status==='next'?'var(--brand)':'var(--ink4)';
+    const pillLabel = isOfflinePending ? 'À synchroniser' : c.pill;
+    card.innerHTML=`
+      <div class="side-bar"></div>
+      <div style="padding-left:8px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <div class="time">${c.time}</div>
+          ${isOfflinePending
+            ? `<span style="font-family:var(--mono);font-size:10px;color:var(--warn);font-weight:700">↻ sync</span>`
+            : `<div class="status-pill"><span class="dot" style="background:${dotColor}"></span>${pillLabel}</div>`
+          }
+        </div>
+        <div class="client">${c.direction}</div>
+        <div class="meta">${c.label} · ${c.meta}</div>
+      </div>
+    `;
+    // Insert PM section label
+    if(i===2){
+      scroll.appendChild(card);
+      const secPM = document.createElement('div');
+      secPM.style.cssText='font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);padding:8px 2px 8px';
+      secPM.textContent='Service après-midi · 14:40 – 18:10';
+      scroll.appendChild(secPM);
+      return;
+    }
+    if(c.status==='next') card.addEventListener('click',()=>showScreen('departure'));
+    scroll.appendChild(card);
+  });
+
+  root.appendChild(scroll);
+
+  const fab=document.createElement('button');
+  fab.className='incident-fab';
+  fab.innerHTML='<span>⚠</span><span>Signaler un incident</span>';
+  fab.addEventListener('click',()=>showScreen('incident'));
+  root.appendChild(fab);
+}
+
+// ─── DÉMARRAGE DE COURSE ───────────────────────────────────────────────
+function renderDeparture(root) {
+  const stops = STOPS_PM;
+  const el = document.createElement('div');
+  el.className='depart-screen';
+
+  // Hero header
+  el.innerHTML=`
+    <div class="depart-hero">
+      <div class="eyebrow">Ligne 3 · Course PM · Vendredi 8 mai</div>
+      <div class="heure">14:40</div>
+      <div class="direction">Doujani → Passot La Barge</div>
+      <div class="vehicle-row">
+        <span class="vehicle-badge">${DRIVER.vehicule}</span>
+        <span class="gps-badge"><span class="gps-dot"></span>GPS actif · signal fort</span>
+      </div>
+    </div>
+  `;
+
+  // Checklist
+  const checklistBlock = document.createElement('div');
+  checklistBlock.className='checklist-block';
+  const checkItems = [
+    'Véhicule en bon état (extérieur)',
+    'Carburant suffisant (> ¼)',
+    'Tablette / appli connectée',
+    'EPI & extincteur présents',
+  ];
+  checklistBlock.innerHTML=`<div class="check-title">Contrôle avant départ</div>`
+    + checkItems.map((label,i)=>`
+      <div class="check-item" data-ci="${i}">
+        <div class="check-box${checks[i]?' checked':''}" data-cb="${i}">
+          ${checks[i]?`<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+        </div>
+        <div class="check-label">${label}</div>
+      </div>
+    `).join('');
+
+  // Stop timeline
+  const timeline = document.createElement('div');
+  timeline.className='stop-timeline';
+  timeline.innerHTML='<div style="font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px">Itinéraire · 7 arrêts</div>'
+    + stops.map((s,i)=>{
+      const isFirst = i===0;
+      const isLast = i===stops.length-1;
+      const dotClass = isFirst?'first':isLast?'last':'';
+      const icon = isFirst
+        ? `<svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="white"/></svg>`
+        : isLast
+        ? `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="2" y="2" width="6" height="6" rx="1" fill="white"/></svg>`
+        : `<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="var(--ink4)"/></svg>`;
+      return `
+        <div class="stop-row">
+          <div class="stop-dot ${dotClass}">${icon}</div>
+          <div class="stop-info">
+            <div class="stop-name">${s.name}</div>
+            <div class="stop-sub">${s.sub} · <span style="font-weight:700">${s.heure}</span></div>
+            ${s.tag?`<span class="stop-tag ${s.tag}">${s.tag==='terminus'?'Terminus':'Arrêt principal'}</span>`:''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  // CTA
+  const cta = document.createElement('div');
+  cta.className='depart-cta';
+  cta.innerHTML=`<button class="depart-big-btn" id="depart-main-btn">▶ Démarrer la course</button>`;
+
+  el.appendChild(checklistBlock);
+  el.appendChild(timeline);
+  el.appendChild(cta);
+  root.appendChild(el);
+
+  // Checklist interaction
+  checklistBlock.querySelectorAll('.check-box').forEach(box=>{
+    box.addEventListener('click',()=>{
+      const i=parseInt(box.dataset.cb);
+      checks[i]=!checks[i];
+      box.className='check-box'+(checks[i]?' checked':'');
+      box.innerHTML=checks[i]
+        ? `<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+        : '';
+      // All checked → green button
+      const allDone = checks.every(v=>v);
+      const btn = root.querySelector('#depart-main-btn');
+      if(btn) btn.className = allDone ? 'depart-big-btn ready' : 'depart-big-btn';
+      if(btn) btn.textContent = allDone ? '✓ Tout bon — Démarrer' : '▶ Démarrer la course';
+    });
+  });
+
+  root.querySelector('#depart-main-btn').addEventListener('click',()=>{
+    const btn = root.querySelector('#depart-main-btn');
+    btn.textContent = '→ Démarrage en cours…';
+    btn.style.background = 'var(--success)';
+    setTimeout(()=>showScreen('course'), 600);
+  });
+}
+
+// ─── COURSE EN COURS ───────────────────────────────────────────────────
+function renderCourse(root) {
+  const stops = STOPS_PM;
+  root.innerHTML=`
+    <div class="course-header">
+      <div class="eyebrow">L3 · Doujani → Passot La Barge · 14:40</div>
+      <h2>Arrêt ${currentStop+1} / ${stops.length} <span id="refresh-icon" style="float:right;font-size:18px;color:var(--ink4);cursor:pointer">↺</span></h2>
+    </div>
+
+    <div class="stop-card">
+      <div class="stop-eyebrow">Arrêt actuel</div>
+      <div class="stop-name" id="stop-current">${stops[currentStop].name}</div>
+      <div class="stop-meta">${stops[currentStop].sub} · arrivée prévue <strong>${stops[currentStop].heure}</strong></div>
+    </div>
+
+    <div class="counter-card" style="margin-top:14px">
+      <div class="counter-cols">
+        <div class="counter-col">
+          <div class="counter-label">Montants</div>
+          <div class="counter-row">
+            <button class="counter-btn minus" id="b-minus">−</button>
+            <div class="counter-val" id="c-boarding">${boarding}</div>
+            <button class="counter-btn plus" id="b-plus">+</button>
+          </div>
+        </div>
+        <div class="counter-col">
+          <div class="counter-label">Descendants</div>
+          <div class="counter-row">
+            <button class="counter-btn minus" id="d-minus">−</button>
+            <div class="counter-val" id="c-alighting">${alighting}</div>
+            <button class="counter-btn plus" id="d-plus">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="total-card">
+      <div class="total-num" id="c-total">${Math.max(0, boarding - alighting)}</div>
+      <div class="total-label">passagers<br>à bord</div>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <button class="depart-btn" id="depart-btn">
+      → ${currentStop < stops.length-2 ? 'Arrêt ' + (currentStop+2) + ' — ' + stops[currentStop+1].name : 'Terminer la course'}
+    </button>
+    <button class="incident-fab" id="course-incident">⚠&nbsp;&nbsp;Signaler un incident</button>
+  `;
+
+  function update(){
+    document.getElementById('c-boarding').textContent=boarding;
+    document.getElementById('c-alighting').textContent=alighting;
+    document.getElementById('c-total').textContent=Math.max(0,boarding-alighting);
+  }
+  root.querySelector('#b-plus').onclick=()=>{boarding++;update()};
+  root.querySelector('#b-minus').onclick=()=>{if(boarding>0){boarding--;update()}};
+  root.querySelector('#d-plus').onclick=()=>{alighting++;update()};
+  root.querySelector('#d-minus').onclick=()=>{if(alighting>0){alighting--;update()}};
+  root.querySelector('#depart-btn').onclick=()=>{
+    if(currentStop < stops.length-2){
+      currentStop++;
+      boarding=0; alighting=0;
+      renderCourse(root);
+    } else {
+      root.querySelector('#depart-btn').textContent='✓ Course terminée';
+      root.querySelector('#depart-btn').style.background='var(--success)';
+      setTimeout(()=>{ currentStop=1; boarding=0; alighting=0; showScreen('planning'); }, 900);
+    }
+  };
+  root.querySelector('#course-incident').onclick=()=>showScreen('incident');
+  root.querySelector('#refresh-icon').onclick=()=>renderCourse(root);
+}
+
+// ─── INCIDENT ──────────────────────────────────────────────────────────
+function renderIncident(root) {
+  renderPlanning(root, false);
+  const sheet=document.createElement('div');
+  sheet.className='incident-sheet';
+
+  const waveformBars = Array.from({length:36},(_,i)=>{
+    const h=20+Math.abs(Math.sin(i*1.4)*Math.cos(i*.8))*70;
+    return `<div class="wf-bar${i<15?' played':''}" style="height:${h}%"></div>`;
+  }).join('');
+
+  sheet.innerHTML=`
+    <div class="sheet-body">
+      <div class="sheet-handle"></div>
+      <div class="sheet-photo" style="background:var(--ink5);font-size:14px;font-family:'Space Mono',monospace;letter-spacing:.08em;color:var(--ink4)">
+        [PHOTO OPTIONNELLE]
+      </div>
+      <div style="padding:0 20px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:14px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);font-weight:700">Incident</div>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--ink3)">14:58</div>
+        </div>
+        <h2 style="font-size:22px;font-weight:700;margin:6px 0 16px">Que se passe-t-il ?</h2>
+      </div>
+
+      <div class="incident-grid" id="incident-grid">
+        ${INCIDENTS.map((inc,i)=>`
+          <button class="incident-btn${inc.selected?' selected':''}" data-idx="${i}">
+            <div class="incident-icon">${inc.icon}</div>
+            <div class="incident-name">${inc.name}</div>
+          </button>
+        `).join('')}
+      </div>
+
+      <div class="voice-section">
+        <div class="voice-label">Mémo vocal · facultatif (60 s max)</div>
+        <div class="voice-row">
+          <div class="voice-rec-btn${recording?' recording':''}" id="rec-btn">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="8" fill="white"/>
+              <circle cx="10" cy="10" r="5" fill="#D13A2A"/>
+            </svg>
+          </div>
+          <div class="waveform">${waveformBars}</div>
+          <div class="voice-time" id="rec-time">00:00 / 01:00</div>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px 0;font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3)">Contexte</div>
+      <div style="margin:6px 16px 0;padding:12px;border:1.5px solid var(--ink5);border-radius:10px;font-size:12px;color:var(--ink2)">
+        D1 · MOHAMED Ali · GR-558-LA<br>
+        L3 · Arrêt M'Tsapéré Mairie · 14:58
+      </div>
+
+      <div class="sheet-actions">
+        <button class="sheet-cancel" id="cancel-btn">Annuler</button>
+        <button class="sheet-send" id="send-btn">Envoyer l'alerte</button>
+      </div>
+    </div>
+  `;
+
+  root.appendChild(sheet);
+
+  let recTimer=null, recSec=0;
+  sheet.querySelector('#rec-btn').onclick=()=>{
+    recording=!recording;
+    const btn=sheet.querySelector('#rec-btn');
+    btn.className='voice-rec-btn'+(recording?' recording':'');
+    if(recording){
+      recTimer=setInterval(()=>{
+        recSec++;
+        const m=Math.floor(recSec/60).toString().padStart(2,'0');
+        const s=(recSec%60).toString().padStart(2,'0');
+        const el=sheet.querySelector('#rec-time');
+        if(el)el.textContent=`${m}:${s} / 01:00`;
+        if(recSec>=60){clearInterval(recTimer);recording=false}
+      },1000);
+    } else {clearInterval(recTimer)}
+  };
+
+  sheet.querySelector('#incident-grid').querySelectorAll('.incident-btn').forEach(btn=>{
+    btn.onclick=()=>{
+      sheet.querySelectorAll('.incident-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      incidentSel=parseInt(btn.dataset.idx);
+    };
+  });
+
+  sheet.querySelector('#cancel-btn').onclick=()=>showScreen('planning');
+  sheet.querySelector('#send-btn').onclick=()=>{
+    sheet.querySelector('#send-btn').textContent='✓ Alerte envoyée';
+    sheet.querySelector('#send-btn').style.background='var(--success)';
+    setTimeout(()=>showScreen('planning'),800);
+  };
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────
+showScreen('login');
+</script>
+</body>
+</html>

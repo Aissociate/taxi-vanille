@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taxi Vanille — App Web Direction · Wireframes</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="wireframe-base.css">
+  <style>
+    .wf-variation-row.web {
+      grid-template-columns: 1fr;
+      gap: 60px;
+    }
+    .wf-grid-page.web { padding: 56px 32px 96px; max-width: 1380px; }
+  </style>
+</head>
+<body>
+
+  <header class="wf-page-banner">
+    <div class="brand">
+      <img class="logo" src="assets/logo-aissociate.png" alt="">
+      <div class="stack">
+        <b>Taxi Vanille</b>
+        <span>Aissociate · wireframes</span>
+      </div>
+    </div>
+    <div>
+      <h1>App Web — Direction &amp; Coordinateurs</h1>
+      <div class="meta" style="margin-top:4px">7 sections · 3 variantes par écran</div>
+    </div>
+    <div class="meta">v0.1 · low-fi</div>
+  </header>
+
+  <nav class="wf-toc">
+    <a href="#sec-planning">01 Planning hebdo</a>
+    <a href="#sec-kpi">02 KPI</a>
+    <a href="#sec-map">03 Carte temps réel</a>
+    <a href="#sec-invoices">04 Factures</a>
+    <a href="#sec-drivers">05 Chauffeurs</a>
+    <a href="#sec-reports">06 Rapports clients</a>
+    <a href="#sec-explorations">07 Explorations</a>
+  </nav>
+
+  <main class="wf-grid-page web">
+
+    <section id="sec-planning" data-screen-label="01 Planning hebdo">
+      <div class="wf-section-header"><span class="num">01</span><h2>Planning hebdo · grille éditable</h2><span class="wf-hand-note" style="margin-left:auto">— lignes = chauffeurs, remplacement en 3 clics</span></div>
+      <div id="planning-row" class="wf-variation-row web"></div>
+    </section>
+
+    <section id="sec-kpi" data-screen-label="02 KPI">
+      <div class="wf-section-header"><span class="num">02</span><h2>Tableau de bord KPI</h2><span class="wf-hand-note" style="margin-left:auto">— CA, courses, prix moyen, incidents</span></div>
+      <div id="kpi-row" class="wf-variation-row web"></div>
+    </section>
+
+    <section id="sec-map" data-screen-label="03 Carte">
+      <div class="wf-section-header"><span class="num">03</span><h2>Carte GPS temps réel</h2><span class="wf-hand-note" style="margin-left:auto">— pastilles colorées, MAJ 60 s via WebSocket</span></div>
+      <div id="map-row" class="wf-variation-row web"></div>
+    </section>
+
+    <section id="sec-invoices" data-screen-label="04 Factures">
+      <div class="wf-section-header"><span class="num">04</span><h2>Factures de rétrocession</h2><span class="wf-hand-note" style="margin-left:auto">— brouillon → validé (Direction) → payé</span></div>
+      <div id="invoices-row" class="wf-variation-row web"></div>
+    </section>
+
+    <section id="sec-drivers" data-screen-label="05 Chauffeurs">
+      <div class="wf-section-header"><span class="num">05</span><h2>Gestion chauffeurs</h2><span class="wf-hand-note" style="margin-left:auto">— fiche, KPI, documents</span></div>
+      <div id="drivers-row" class="wf-variation-row web"></div>
+    </section>
+
+    <section id="sec-reports" data-screen-label="06 Rapports">
+      <div class="wf-section-header"><span class="num">06</span><h2>Rapports clients institutionnels</h2><span class="wf-hand-note" style="margin-left:auto">— PDF / Excel par client, par période</span></div>
+      <div id="reports-row" class="wf-variation-row web"></div>
+    </section>
+
+    <section id="sec-explorations" data-screen-label="07 Explorations">
+      <div class="wf-section-header"><span class="num">07</span><h2>Explorations · interactions clés</h2><span class="wf-hand-note" style="margin-left:auto">— 4 surfaces qui font gagner du temps tous les jours</span></div>
+      <div id="explorations-row" class="wf-variation-row web"></div>
+    </section>
+
+    <section style="padding-top:32px; border-top:1.5px solid var(--wf-stroke-3); display:flex; gap:32px; flex-wrap:wrap">
+      <div style="flex:1; min-width:280px">
+        <div class="wf-eyebrow">Rôles &amp; permissions</div>
+        <ul style="font-size:13px; color:var(--wf-stroke-2); line-height:1.7; padding-left:18px; margin-top:8px">
+          <li><b>Direction</b> — tout, dont validation des factures.</li>
+          <li><b>Coordinateur</b> — planning, carte, rapports, accès aux vocaux. Pas la validation factures (CTA grisé).</li>
+          <li>Toute modification de planning déclenche une notification FCM côté chauffeur.</li>
+        </ul>
+      </div>
+      <div style="flex:1; min-width:280px">
+        <div class="wf-eyebrow">À explorer ensuite</div>
+        <ul style="font-size:13px; color:var(--wf-stroke-2); line-height:1.7; padding-left:18px; margin-top:8px">
+          <li>Réassignation en masse pendant un événement météo (multi-courses).</li>
+          <li>Vue mobile direction allégée pour validation hors bureau.</li>
+          <li>Annonces vocales push aux chauffeurs (broadcast).</li>
+          <li>Saisie kilométrique automatique depuis traces GPS.</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="real-data.jsx"></script>
+  <script type="text/babel" src="web-screens.jsx"></script>
+  <script type="text/babel" src="web-explorations.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <script type="text/babel">
+    const { useEffect } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "showAnnotations": true,
+      "highContrast": false,
+      "frameWidth": 1140
+    }/*EDITMODE-END*/;
+
+    function applyTweaks(t) {
+      document.documentElement.style.setProperty('--wf-paper', t.highContrast ? '#fff' : '#fbfaf8');
+      document.documentElement.style.setProperty('--wf-stroke', t.highContrast ? '#000' : '#2a2627');
+      document.body.classList.toggle('hide-annotations', !t.showAnnotations);
+    }
+
+    function App() {
+      const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      useEffect(() => applyTweaks(tweaks), [tweaks]);
+      return (
+        <TweaksPanel title="Tweaks">
+          <TweakSection label="Affichage">
+            <TweakToggle label="Annotations manuscrites" value={tweaks.showAnnotations} onChange={v => setTweak('showAnnotations', v)} />
+            <TweakToggle label="Mode haut contraste" value={tweaks.highContrast} onChange={v => setTweak('highContrast', v)} />
+          </TweakSection>
+          <TweakSection label="Frame">
+            <TweakSlider label="Largeur fenêtre" min={1100} max={1380} step={20} value={tweaks.frameWidth} onChange={v => setTweak('frameWidth', v)} />
+          </TweakSection>
+        </TweaksPanel>
+      );
+    }
+
+    const rows = [
+      ['planning-row', [
+        [PlanningGridB, 'B · Vue Gantt journée', 'Rail horaire 06h-20h, blocs proportionnels à la durée. Idéal pour caler des remplacements.'],
+      ]],
+      ['kpi-row', [
+        [KpiA, 'A · Tableau dense 4 KPI + détail', 'Tout au-dessus de la ligne de flottaison. Pour usage quotidien.'],
+      ]],
+      ['map-row', [
+        [MapB, 'B · Carte sombre, dispatch', 'Mode opérationnel sombre, KPI live en overlay. Pour écrans muraux.'],
+        [MapC, 'C · Carte + replay scrubber', 'Bascule live → historique. Lecture chronologique d\'une journée.'],
+      ]],
+      ['invoices-row', [
+        [InvoicesC, 'C · Kanban brouillon → validé → payé', 'Vue flux. Glisser-déposer pour faire avancer un statut.'],
+      ]],
+      ['drivers-row', [
+        [DriversB, 'B · Maître-détail fiche complète', 'Liste à gauche, fiche avec KPI + sparkline + documents à droite.'],
+      ]],
+      ['reports-row', [
+        [ReportsA, 'A · Sélecteur client + détail mensuel', 'Pour générer un rapport "à la carte" pour un client donné.'],
+        [ReportsB, 'B · Assistant configurable + aperçu PDF', 'Étapes guidées, preview live de la mise en page.'],
+      ]],
+      ['explorations-row', [
+        [GlobalAlertView, 'E0 · Alerte visuelle forte (incident / vocal)', 'Bandeau rouge animé sous la PageBar, pulse rouge sur la sidebar, KPI Incidents bordé danger, toast en bas-droite avec son court optionnel.'],
+        [ReplaceDriverModal, 'E1 · Modal Remplacer chauffeur — 3 clics chrono', 'Étape 2 visible : course présélectionnée, candidats triés par proximité, suggestion en surbrillance, validation au clavier.'],
+        [IncidentVoicePlayer, 'E2 · Lecteur de vocaux d\'incident embarqué', 'Bandeau d\'alerte + pin pulsant + lecteur flottant (waveform + transcription) + inbox vocale latérale.'],
+        [AuditLog, 'E3 · Historique des modifications planning', 'Timeline des changements, qui/quoi/pourquoi/notif, panneau de détail avant→après et bouton « annuler » sous 24 h.'],
+        [CommandPalette, 'E4 · Recherche globale ⌘K', 'Une barre, tout : courses, chauffeurs, factures, clients. Scopes en pills, raccourcis clavier visibles, surbrillance des matchs.'],
+      ]],
+    ];
+
+    // 1 = pleine largeur, 2 = 2-col, 3+ = 3-col
+    const colsFor = (n) => n === 1 ? '1fr' : n === 2 ? '1fr 1fr' : 'repeat(3, 1fr)';
+
+    rows.forEach(([id, vars]) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.gridTemplateColumns = colsFor(vars.length);
+      el.style.gap = vars.length === 1 ? '60px' : '36px';
+      const root = ReactDOM.createRoot(el);
+      root.render(
+        <>
+          {vars.map(([Comp, label, desc], i) => (
+            <WebFrame key={i} label={label} sublabel={desc} width={1280} height={760}>
+              <Comp />
+            </WebFrame>
+          ))}
+        </>
+      );
+    });
+
+    const panelMount = document.createElement('div');
+    document.body.appendChild(panelMount);
+    ReactDOM.createRoot(panelMount).render(<App />);
+
+    const style = document.createElement('style');
+    style.textContent = `.hide-annotations .wf-hand-note { display:none !important; }`;
+    document.head.appendChild(style);
+  </script>
+
+  <style id="__om-edit-overrides"></style>
+</body>
+</html>

@@ -1,0 +1,2736 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taxi Vanille — Direction & Coordinateurs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#F26419;--brand-h:#F09514;--brand-d:#E04818;
+  --ink-900:#1A1718;--ink-800:#262223;--ink-700:#393536;--ink-600:#5A5456;
+  --ink-500:#817A7C;--ink-400:#A8A3A4;--ink-300:#CFCBCC;--ink-200:#E8E5E6;
+  --ink-100:#F4F2F2;--ink-050:#FAF9F9;
+  --success:#2E8B57;--warn:#E8A523;--danger:#D13A2A;--info:#3A6EA5;
+  --accent-soft:rgba(242,100,25,0.12);
+  --paper:#fbfaf8;--paper2:#f4f2ee;
+  --stroke:#2a2627;--stroke2:#6b6566;--stroke3:#b9b3b4;--stroke4:#e3dedf;
+  --font-sans:'Inter',-apple-system,sans-serif;
+  --font-mono:'Space Mono',ui-monospace,monospace;
+  --font-hand:'Caveat',cursive;
+  --radius:8px;
+  --sh-md:0 6px 16px rgba(25,20,20,.07),0 2px 4px rgba(25,20,20,.04);
+  --sh-lg:0 18px 40px rgba(25,20,20,.10),0 4px 10px rgba(25,20,20,.05);
+}
+html,body{height:100%;font-family:var(--font-sans);font-size:16px;color:var(--stroke);background:var(--paper)}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+
+/* Layout */
+#root{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:var(--paper);border-right:1.5px solid var(--stroke);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{display:flex;align-items:center;gap:10px;padding:18px 14px 14px;border-bottom:1px dashed var(--stroke3)}
+.sidebar-logo .monogram{width:34px;height:34px;background:var(--stroke);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-mono);font-size:12px;font-weight:700;flex-shrink:0}
+.sidebar-logo .brand-name{font-family:var(--font-mono);font-size:13px;font-weight:700}
+.sidebar-logo .brand-sub{font-family:var(--font-mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--stroke2)}
+nav{flex:1;padding:10px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:6px;font-size:13px;font-weight:500;color:var(--stroke2);cursor:pointer;transition:background .12s;position:relative;border:1.5px solid transparent}
+.nav-item:hover{background:var(--ink-100);color:var(--stroke)}
+.nav-item.active{background:var(--stroke);color:#fff;font-weight:700}
+.nav-item .nav-badge{margin-left:auto;font-family:var(--font-mono);font-size:9px;font-weight:800;background:var(--danger);color:#fff;padding:2px 6px;border-radius:999px}
+.nav-item.alert-ring{border-color:var(--danger)}
+.nav-dot{width:8px;height:8px;border-radius:50%;background:var(--danger);animation:pulse-ring 1.4s infinite;flex-shrink:0}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(209,58,42,.55)}70%{box-shadow:0 0 0 10px rgba(209,58,42,0)}100%{box-shadow:0 0 0 0 rgba(209,58,42,0)}}
+.sidebar-user{padding:12px 14px;border-top:1px dashed var(--stroke3);font-size:11px;color:var(--stroke2)}
+.sidebar-user b{display:block;font-size:12px;color:var(--stroke)}
+
+/* Main content */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.page-bar{padding:14px 24px;border-bottom:1.5px solid var(--stroke);display:flex;align-items:center;justify-content:space-between;background:#fff;flex-shrink:0}
+.page-bar .pb-left .eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stroke2)}
+.page-bar .pb-left h1{font-size:18px;font-weight:700;margin-top:2px}
+.page-bar .pb-actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:6px 14px;height:32px;font-size:12px;font-weight:700;font-family:var(--font-sans);border:2px solid var(--stroke);border-radius:8px;background:#fff;cursor:pointer;transition:background .12s,color .12s;white-space:nowrap}
+.btn:hover{background:var(--ink-100)}
+.btn-accent{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-accent:hover{background:var(--brand-d);border-color:var(--brand-d)}
+.btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn-sm{padding:4px 10px;height:28px;font-size:11px}
+
+/* Eyebrow */
+.eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stroke2)}
+
+/* Pills */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border:1.25px solid var(--stroke2);border-radius:999px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--stroke);background:#fff;white-space:nowrap}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:var(--stroke2)}
+.pill.live{border-color:var(--success);color:var(--success)}.pill.live .dot{background:var(--success)}
+.pill.late{border-color:var(--warn);color:#9a6f10}.pill.late .dot{background:var(--warn)}
+.pill.done{border-color:var(--stroke3);color:var(--stroke2)}.pill.done .dot{background:var(--stroke3)}
+.pill.incident{border-color:var(--danger);color:var(--danger)}.pill.incident .dot{background:var(--danger)}
+.pill.active-dark{background:var(--stroke);color:#fff;border-color:var(--stroke)}
+.pill.active-brand{background:var(--brand);color:#fff;border-color:var(--brand)}
+
+/* Cards */
+.card{border:1.5px solid var(--stroke);background:#fff;border-radius:6px 7px 5px 8px / 5px 8px 6px 7px}
+.card-soft{border:1.25px dashed var(--stroke3);background:var(--paper);border-radius:6px}
+
+/* Divider dashed */
+.divider-dash{height:1px;background:repeating-linear-gradient(90deg,var(--stroke3) 0 6px,transparent 6px 10px)}
+
+/* Scribble placeholder */
+.scribble{height:8px;background-image:repeating-linear-gradient(90deg,var(--stroke3) 0 14px,transparent 14px 18px);border-radius:2px;margin:6px 0}
+
+/* Alert banner */
+.alert-banner{display:flex;align-items:stretch;border-top:2px solid var(--danger);border-bottom:2px solid var(--danger);background:#fff;flex-shrink:0}
+.alert-stripe{width:44px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-mono);font-weight:800;font-size:16px;background-image:repeating-linear-gradient(45deg,var(--danger) 0 8px,#b8311f 8px 16px);background-size:28px 28px;animation:stripes 1.4s linear infinite}
+@keyframes stripes{from{background-position:0 0}to{background-position:28px 0}}
+@keyframes blink{0%,60%{background:var(--danger);color:#fff}80%{background:#fff;color:var(--danger)}100%{background:var(--danger);color:#fff}}
+.alert-pulse{width:12px;height:12px;border-radius:50%;background:var(--danger);animation:pulse-ring 1.4s infinite;flex-shrink:0}
+.alert-badge{font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;color:var(--danger);padding:2px 6px;border:1.5px solid var(--danger);border-radius:3px;animation:blink 1.6s infinite}
+
+/* Scroll areas */
+.scroll{overflow:auto;flex:1}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;width:310px;z-index:999}
+.toast-inner{border:2px solid var(--danger);border-radius:8px;background:#fff;padding:14px;box-shadow:0 12px 30px rgba(209,58,42,.25)}
+
+/* Modal backdrop */
+.modal-bg{position:fixed;inset:0;background:rgba(20,15,16,.38);z-index:100;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border:1.5px solid var(--stroke);border-radius:8px;box-shadow:0 30px 80px rgba(20,15,16,.35);max-height:90vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* Command palette */
+.cmd-palette{position:fixed;left:50%;top:80px;transform:translateX(-50%);width:640px;z-index:200;background:#fff;border:1.5px solid var(--stroke);border-radius:8px;box-shadow:0 30px 80px rgba(20,15,16,.4);display:flex;flex-direction:column;max-height:calc(100vh - 120px)}
+
+/* KPI block */
+.kpi-block{border:1.5px solid var(--stroke);background:#fff;border-radius:6px;padding:16px}
+.kpi-val{font-family:var(--font-mono);font-weight:700;font-size:28px;margin-top:6px;line-height:1}
+.kpi-sub{font-size:11px;color:var(--stroke2);margin-top:4px}
+
+/* Map */
+.map-wrap{flex:1;position:relative;overflow:hidden}
+
+/* Gantt */
+.gantt-bar{position:absolute;top:8px;bottom:8px;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-family:var(--font-mono);font-size:10px;font-weight:700;overflow:hidden;white-space:nowrap}
+
+/* Sparkline SVG */
+.sparkline{width:100%;height:60px}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--stroke2);padding:12px 14px;text-align:left;border-bottom:1.5px solid var(--stroke)}
+td{padding:10px 14px;border-bottom:1px dashed var(--stroke3)}
+tr:last-child td{border-bottom:none}
+
+/* Timeline dot */
+.tl-dot{position:absolute;left:-17px;top:4px;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px var(--stroke3)}
+
+/* Waveform bar */
+.wf-bar{width:3px;border-radius:1px;display:inline-block}
+
+/* Stepper */
+.step-num{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--stroke);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:700}
+
+/* Overlay blur */
+.blurred{filter:blur(1.5px) saturate(.5);opacity:.6;pointer-events:none}
+
+kbd{font-family:var(--font-mono);font-size:10px;padding:2px 6px;border:1px solid var(--stroke3);border-radius:4px;background:var(--paper)}
+
+/* Focus ring for keyboard-nav */
+*:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--stroke3);border-radius:999px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+// Ligne 3 — DOUJANI ↔ PASSOT LA BARGE (via M'TSAPERE)
+const L3 = [
+  { code:'D1',  nom:'MOHAMED Ali',              tel:'06 39 40 35 35', vehicule:'GR-558-LA', am:'5:00-8:30',   pm:'14:40-18:10' },
+  { code:'D2',  nom:'BARAKA Soumaila',           tel:'06 39 24 71 32', vehicule:'GX-284-BV', am:'6:20-14:50' },
+  { code:'D3',  nom:'ABDOURAHIM Mohamed',        tel:'06 39 67 24 24', vehicule:'GY-732-PV', am:'5:40-8:10',   pm:'14:40-18:10' },
+  { code:'D4',  nom:'AMBDI Houmadi',             tel:'06 39 23 55 69', vehicule:'GC-122-QA', am:'6:00-14:00' },
+  { code:'D5',  nom:'AMINA Selemani',            tel:'06 93 32 32 68', vehicule:'WW-696-KR', am:'5:20-8:10',   pm:'15:20-17:50' },
+  { code:'D6',  nom:'ABDOU HAMIDOUNE Nassabia',  tel:'06 39 23 54 34', vehicule:'GY-652-NV', am:'6:20-8:20',   pm:'15:00-20:30' },
+  { code:'D7',  nom:'COMBO Said',                tel:'06 39 68 37 93', vehicule:'GB-965-EQ', am:'6:20-8:20',   pm:'17:50-20:50', dimJF:'matin' },
+  { code:'D8',  nom:'ISSOUF Dailami',            tel:'06 39 40 54 45', vehicule:'GZ-268-PR', pm:'14:20-21:10', dimJF:'PM 1/2' },
+  { code:'D9',  nom:'RENEE Assanati',            tel:'06 39 07 82 51', vehicule:'GR-921-XZ', pm:'15:20-21:30' },
+  { code:'D10', nom:'KAMARDINE Mansour',         tel:'06 39 21 15 43', vehicule:'WW-688-KR', am:'5:50-14:10' },
+  { code:'D11', nom:'ALLAOUI Soibrane',          tel:'06 39 99 08 35', vehicule:'FZ-148-HW', am:'6:00-13:50' },
+  { code:'D12', nom:"VELOU M'COLO M'Berou",      tel:'06 39 27 46 76', vehicule:'HC-814-HL', am:'5:10-8:10',   dimJF:'matin' },
+  { code:'D13', nom:'MOURIDI Aktoir',            tel:'06 39 03 27 63', vehicule:'GY-978-QD', am:'5:30-8:30',   dimJF:'PM 1/2' },
+  { code:'D14', nom:'AHAMADI Laydine',           tel:'06 39 58 51 87', vehicule:'WW-620-KR', am:'6:10-8:10',   astr:'4:30-6:00·8:10-11:00', dimJF:'PM fixe' },
+];
+// Ligne 4 — VAHIBE ↔ PASSAMAINTY (via Kawéni / PEM)
+const L4 = [
+  { code:'C1',  nom:'EL ANZIZE Hamada',         tel:'06 39 22 81 28', vehicule:'GM-515-YL', am:'4:30-12:45' },
+  { code:'C2',  nom:'BINA HALADI Bina',          tel:'06 39 06 05 82', vehicule:'WW-654-KR', am:'4:30-8:40',  pm:'13:00-16:00' },
+  { code:'C3',  nom:'ABDOU MINIHADJI Amada',     tel:'06 39 65 03 93', vehicule:'FY-654-BF', am:'4:50-8:30',  pm:'14:30-17:00', astr:'17:00-19:00' },
+  { code:'C4',  nom:'TOUMBOU Toibourani',        tel:'06 39 19 14 22', vehicule:'GF-215-AQ', am:'5:00-8:30',  pm:'17:00-21:15' },
+  { code:'C5',  nom:'AHAMADI Raenmouddine',      tel:'06 39 02 40 54', vehicule:'HC-007-YA', am:'6:00-9:30',  dimJF:'matin 1/2' },
+  { code:'C6',  nom:'OUSSENI Soula',             tel:'06 39 69 03 87', vehicule:'GP-813-HX', am:'6:30-14:15' },
+  { code:'C7',  nom:'HAMIDOU Dahalani',          tel:'06 39 97 83 04', vehicule:'EB-387-HJ', am:'4:30-11:00', astr:'4:30-6:40·9:00-11:00' },
+  { code:'C8',  nom:'HADHURAMI Makinedine',      tel:'06 39 94 46 40', vehicule:'FZ-411-ZD', am:'5:10-8:45',  dimJF:'PM 1/2' },
+  { code:'C9',  nom:'SANDI Maanrouf',            tel:'06 39 40 58 85', vehicule:'GW-255-NY', am:'5:20-8:00' },
+  { code:'C10', nom:"ISSIHAKA M'Changama",       tel:'06 39 27 71 41', vehicule:'GM-253-PW', am:'5:30-8:10',  dimJF:'matin 1/2' },
+  { code:'C11', nom:'MADI BOINA Mkidachi',       tel:'06 39 22 08 67', vehicule:'GS-501-ZK', am:'5:00-8:30' },
+  { code:'C12', nom:'ALILOIFFA Said Siradj',     tel:'06 39 39 15 17', vehicule:'GS-608-GG', am:'6:00-8:30' },
+  { code:'C13', nom:'ABDALLAH Ben',              tel:'06 39 63 48 34', vehicule:'WW-661-KR', am:'6:30-9:00' },
+  { code:'C14', nom:'KAMARDINE Mansour',         tel:'06 39 21 15 43', vehicule:'WW-629-KR', am:'6:40-8:10',  dimJF:'PM 1/2' },
+];
+// CHM — CHM Mamoudzou ↔ La Barge Petite-Terre
+const CHM = [
+  { code:'H1', nom:'CHADHOULI Houmadi',   tel:'06 39 02 29 70', vehicule:'GT-434-BT', am:'5:35-7:50', pm:'14:00-19:45' },
+  { code:'H2', nom:'CHAMSSOUNE Ahmed',    tel:'06 39 95 35 45', vehicule:'DV-201-DH' },
+  { code:'H3', nom:'SAID ALI Kamile',     tel:'06 39 22 01 83', vehicule:'EF-251-RR', am:'6:00-7:05', pm:'14:00-19:45' },
+  { code:'H4', nom:'BACAR ALI Mohamed',   tel:'07 83 82 76 52', vehicule:'EE-142-DQ' },
+  { code:'H5', nom:'ATTOUMANI Kamaldine', tel:'06 39 66 69 21', vehicule:'DG-106-XM', am:'5:45-7:50', pm:'15:00-19:25' },
+  { code:'H6', nom:'MADI Hamada',         tel:'06 39 61 35 52', vehicule:'AD-649-QS' },
+  { code:'H7', nom:'OIHABOU Bacari',      tel:'06 39 21 37 01', vehicule:'DX-651-JT' },
+  { code:'H8', nom:'AHMED Abdallah',      tel:'06 39 22 39 00', vehicule:'AK-861-JF' },
+];
+// Véhicules — type & capacité par plaque
+const VEHICULES = {
+  'GR-558-LA':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GX-284-BV':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GY-732-PV':{type:'Minibus',marque:'Peugeot Boxer',places:9},
+  'GC-122-QA':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'WW-696-KR':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GY-652-NV':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GB-965-EQ':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GZ-268-PR':{type:'Minibus',marque:'Peugeot Boxer',places:9},
+  'GR-921-XZ':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'WW-688-KR':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'FZ-148-HW':{type:'Minibus',marque:'Nissan Urvan', places:9},
+  'HC-814-HL':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GY-978-QD':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'WW-620-KR':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GM-515-YL':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'WW-654-KR':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'FY-654-BF':{type:'Minibus',marque:'Peugeot Boxer',places:9},
+  'GF-215-AQ':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'HC-007-YA':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GP-813-HX':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'EB-387-HJ':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'FZ-411-ZD':{type:'Minibus',marque:'Nissan Urvan', places:9},
+  'GW-255-NY':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GM-253-PW':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GS-501-ZK':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GS-608-GG':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'WW-661-KR':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'WW-629-KR':{type:'Minibus',marque:'Toyota HiAce',places:9},
+  'GT-434-BT':{type:'Navette',  marque:'Peugeot Boxer',places:9},
+  'DV-201-DH':{type:'Navette',  marque:'Toyota HiAce',places:9},
+  'EF-251-RR':{type:'Navette',  marque:'Peugeot Boxer',places:9},
+  'EE-142-DQ':{type:'Navette',  marque:'Toyota HiAce',places:9},
+  'DG-106-XM':{type:'Navette',  marque:'Peugeot Boxer',places:9},
+  'AD-649-QS':{type:'Navette',  marque:'Toyota HiAce',places:9},
+  'DX-651-JT':{type:'Navette',  marque:'Toyota HiAce',places:9},
+  'AK-861-JF':{type:'Navette',  marque:'Toyota HiAce',places:9},
+};
+// Documents chauffeurs — {p:permisB, m:médical, a:assurance, c:cartePro} · null = manquant
+const TODAY_DOC = new Date('2026-05-08');
+const DOCS = {
+  D1: {p:{e:'2028-03-15'},m:{e:'2026-06-30'},a:{e:'2026-09-01'},c:{e:'2027-01-20'}},
+  D2: {p:{e:'2026-11-08'},m:{e:'2026-07-22'},a:{e:'2026-09-01'},c:{e:'2027-06-15'}},
+  D3: {p:{e:'2027-05-20'},m:{e:'2026-08-10'},a:{e:'2026-09-01'},c:{e:'2026-11-30'}},
+  D4: {p:{e:'2029-01-12'},m:{e:'2026-06-15'},a:{e:'2026-09-01'},c:{e:'2028-03-01'}},
+  D5: {p:{e:'2027-09-08'},m:{e:'2026-07-01'},a:{e:'2026-09-01'},c:{e:'2027-04-10'}},
+  D6: {p:{e:'2026-06-10'},m:{e:'2026-09-20'},a:{e:'2026-09-01'},c:{e:'2026-12-15'}},
+  D7: {p:{e:'2025-11-10'},m:{e:'2026-08-15'},a:{e:'2026-09-01'},c:{e:'2026-12-31'}},
+  D8: {p:{e:'2027-03-22'},m:{e:'2026-05-30'},a:null,           c:{e:'2026-10-08'}},
+  D9: {p:{e:'2028-07-14'},m:{e:'2026-06-20'},a:{e:'2026-09-01'},c:{e:'2027-02-28'}},
+  D10:{p:{e:'2027-02-05'},m:{e:'2026-07-15'},a:{e:'2026-09-01'},c:{e:'2026-11-01'}},
+  D11:{p:{e:'2027-08-18'},m:null,            a:{e:'2026-09-01'},c:{e:'2027-05-22'}},
+  D12:{p:{e:'2026-10-30'},m:{e:'2026-06-01'},a:{e:'2026-09-01'},c:{e:'2027-08-15'}},
+  D13:{p:{e:'2028-04-11'},m:{e:'2026-09-14'},a:{e:'2026-09-01'},c:{e:'2026-06-30'}},
+  D14:{p:{e:'2027-06-25'},m:{e:'2026-08-01'},a:{e:'2026-09-01'},c:{e:'2026-05-31'}},
+  C1: {p:{e:'2027-11-02'},m:{e:'2026-07-30'},a:{e:'2026-09-01'},c:{e:'2027-03-15'}},
+  C2: {p:{e:'2026-09-17'},m:{e:'2026-08-22'},a:{e:'2026-09-01'},c:{e:'2026-12-01'}},
+  C3: {p:{e:'2028-01-28'},m:{e:'2026-06-01'},a:{e:'2026-09-01'},c:{e:'2027-07-20'}},
+  C4: {p:{e:'2027-04-14'},m:{e:'2026-07-10'},a:{e:'2025-11-01'},c:{e:'2026-11-15'}},
+  C5: {p:{e:'2026-06-20'},m:{e:'2026-09-05'},a:{e:'2026-09-01'},c:{e:'2027-01-08'}},
+  C6: {p:{e:'2027-12-03'},m:{e:'2026-06-25'},a:{e:'2026-09-01'},c:{e:'2027-09-30'}},
+  C7: {p:{e:'2028-08-19'},m:{e:'2026-08-30'},a:{e:'2026-09-01'},c:{e:'2027-06-01'}},
+  C8: {p:{e:'2027-01-07'},m:{e:'2026-07-20'},a:{e:'2026-09-01'},c:{e:'2026-10-22'}},
+  C9: {p:{e:'2026-11-25'},m:{e:'2026-08-05'},a:null,           c:{e:'2026-12-10'}},
+  C10:{p:{e:'2027-07-16'},m:{e:'2026-06-08'},a:{e:'2026-09-01'},c:{e:'2027-04-25'}},
+  C11:{p:{e:'2028-02-10'},m:{e:'2026-09-18'},a:{e:'2026-09-01'},c:{e:'2027-11-05'}},
+  C12:{p:{e:'2025-12-15'},m:{e:'2026-07-28'},a:{e:'2026-09-01'},c:{e:'2026-12-20'}},
+  C13:{p:{e:'2027-10-04'},m:{e:'2026-08-15'},a:{e:'2026-09-01'},c:{e:'2027-03-08'}},
+  C14:{p:{e:'2026-07-31'},m:{e:'2026-09-02'},a:{e:'2026-09-01'},c:{e:'2026-11-28'}},
+  H1: {p:{e:'2027-03-20'},m:{e:'2026-06-30'},a:{e:'2026-09-01'},c:{e:'2027-02-14'}},
+  H2: {p:null,m:null,a:null,c:null},
+  H3: {p:{e:'2028-06-09'},m:{e:'2026-07-15'},a:{e:'2026-09-01'},c:{e:'2027-08-22'}},
+  H4: {p:null,m:null,a:null,c:null},
+  H5: {p:{e:'2027-05-11'},m:{e:'2026-08-20'},a:{e:'2026-09-01'},c:{e:'2026-12-05'}},
+  H6: {p:{e:'2026-09-14'},m:null,            a:null,           c:null},
+  H7: {p:null,m:null,a:null,c:null},
+  H8: {p:null,m:null,a:null,c:null},
+};
+// RIB chauffeurs — {iban, bic, banque, titulaire} · null = non renseigné
+const RIBS = {
+  D1: {iban:'FR76 1027 8060 0000 1234 5678 901',bic:'CMCIFR2A',banque:'Crédit Mutuel',titulaire:'MOHAMED Ali'},
+  D2: {iban:'FR76 3000 4000 0300 0987 6543 210',bic:'BNPAFRPP',banque:'BNP Paribas',titulaire:'BARAKA Soumaila'},
+  D3: {iban:'FR76 1820 6004 4910 0011 2233 445',bic:'AGRIFRPP',banque:'Crédit Agricole',titulaire:'ABDOURAHIM Mohamed'},
+  D4: {iban:'FR76 1027 8060 0000 5566 7788 990',bic:'CMCIFR2A',banque:'Crédit Mutuel',titulaire:'AMBDI Houmadi'},
+  D5: {iban:'FR76 3000 4000 0300 1122 3344 556',bic:'BNPAFRPP',banque:'BNP Paribas',titulaire:'AMINA Selemani'},
+  D6: {iban:'FR76 1820 6004 4910 9988 7766 554',bic:'AGRIFRPP',banque:'Crédit Agricole',titulaire:'ABDOU HAMIDOUNE Nassabia'},
+  D7: {iban:'FR76 1027 8060 0000 2233 4455 667',bic:'CMCIFR2A',banque:'Crédit Mutuel',titulaire:'COMBO Said'},
+  D8: null,
+  D9: {iban:'FR76 3000 4000 0300 6677 8899 001',bic:'BNPAFRPP',banque:'BNP Paribas',titulaire:'RENEE Assanati'},
+  D10:{iban:'FR76 1820 6004 4910 3344 5566 778',bic:'AGRIFRPP',banque:'Crédit Agricole',titulaire:'KAMARDINE Mansour'},
+  D11:{iban:'FR76 1027 8060 0000 7788 9900 112',bic:'CMCIFR2A',banque:'Crédit Mutuel',titulaire:'ALLAOUI Soibrane'},
+  D12:null,
+  D13:{iban:'FR76 3000 4000 0300 4455 6677 889',bic:'BNPAFRPP',banque:'BNP Paribas',titulaire:'MOURIDI Aktoir'},
+  D14:{iban:'FR76 1820 6004 4910 1100 2233 445',bic:'AGRIFRPP',banque:'Crédit Agricole',titulaire:'AHAMADI Laydine'},
+  C1: {iban:'FR76 1027 8060 0000 9900 1122 334',bic:'CMCIFR2A',banque:'Crédit Mutuel',titulaire:'EL ANZIZE Hamada'},
+  C2: {iban:'FR76 3000 4000 0300 2211 3344 556',bic:'BNPAFRPP',banque:'BNP Paribas',titulaire:'BINA HALADI Bina'},
+  C3: {iban:'FR76 1820 6004 4910 5566 7788 990',bic:'AGRIFRPP',banque:'Crédit Agricole',titulaire:'ABDOU MINIHADJI Amada'},
+  C4: {iban:'FR76 1027 8060 0000 3344 5566 778',bic:'CMCIFR2A',banque:'Crédit Mutuel',titulaire:'TOUMBOU Toibourani'},
+  C5: null,
+  C6: {iban:'FR76 3000 4000 0300 8877 6655 443',bic:'BNPAFRPP',banque:'BNP Paribas',titulaire:'OUSSENI Soula'},
+  C7: {iban:'FR76 1820 6004 4910 7766 5544 332',bic:'AGRIFRPP',banque:'Crédit Agricole',titulaire:'HAMIDOU Dahalani'},
+  C8: {iban:'FR76 1027 8060 0000 6655 4433 221',bic:'CMCIFR2A',banque:'Crédit Mutuel',titulaire:'HADHURAMI Makinedine'},
+  C9: null,
+  C10:{iban:'FR76 3000 4000 0300 5544 3322 110',bic:'BNPAFRPP',banque:'BNP Paribas',titulaire:"ISSIHAKA M'Changama"},
+  C11:{iban:'FR76 1820 6004 4910 2233 4455 667',bic:'AGRIFRPP',banque:'Crédit Agricole',titulaire:'MADI BOINA Mkidachi'},
+  C12:{iban:'FR76 1027 8060 0000 4455 6677 889',bic:'CMCIFR2A',banque:'Crédit Mutuel',titulaire:'ALILOIFFA Said Siradj'},
+  C13:null,
+  C14:{iban:'FR76 3000 4000 0300 1100 9988 776',bic:'BNPAFRPP',banque:'BNP Paribas',titulaire:'KAMARDINE Mansour'},
+  H1: {iban:'FR76 1820 6004 4910 8877 6655 443',bic:'AGRIFRPP',banque:'Crédit Agricole',titulaire:'CHADHOULI Houmadi'},
+  H2: null,
+  H3: {iban:'FR76 1027 8060 0000 7766 5544 332',bic:'CMCIFR2A',banque:'Crédit Mutuel',titulaire:'SAID ALI Kamile'},
+  H4: null,
+  H5: {iban:'FR76 3000 4000 0300 6655 4433 221',bic:'BNPAFRPP',banque:'BNP Paribas',titulaire:'ATTOUMANI Kamaldine'},
+  H6: null,
+  H7: null,
+  H8: null,
+};
+// Dimanche & Jours Fériés MAI 2026
+const DIMANCHES_MAI = [
+  { date:'01/05', label:'Fête Travail', jourFerie:true,
+    l4matin:'C10 ISSIHAKA',  l4pm:'C14 KAMARDINE',
+    l3matin:'D7 COMBO + D12 VELOU', l3pm:'D13 MOURIDI + D14 LAYDINE' },
+  { date:'03/05', label:'Dim',
+    l4matin:'C5 RAENMOUDDINE', l4pm:'C8 HADHURAMI',
+    l3matin:'D7 COMBO + D12 VELOU', l3pm:'D8 ISSOUF + D14 LAYDINE' },
+  { date:'08/05', label:'Victoire 45', jourFerie:true,
+    l4matin:'C10 ISSIHAKA',  l4pm:'C14 KAMARDINE',
+    l3matin:'D7 COMBO + D12 VELOU', l3pm:'D13 MOURIDI + D14 LAYDINE' },
+  { date:'10/05', label:'Dim',
+    l4matin:'C5 RAENMOUDDINE', l4pm:'C8 HADHURAMI',
+    l3matin:'D7 COMBO + D12 VELOU', l3pm:'D8 ISSOUF + D14 LAYDINE' },
+  { date:'17/05', label:'Ascension', jourFerie:true,
+    l4matin:'C5 RAENMOUDDINE', l4pm:'C8 HADHURAMI',
+    l3matin:'D7 COMBO + D12 VELOU', l3pm:'D13 MOURIDI + D14 LAYDINE' },
+  { date:'24/05', label:'Dim',
+    l4matin:'C10 ISSIHAKA',  l4pm:'C14 KAMARDINE',
+    l3matin:'D7 COMBO + D12 VELOU', l3pm:'D8 ISSOUF + D14 LAYDINE' },
+  { date:'25/05', label:'Pentecôte', jourFerie:true,
+    l4matin:'C5 RAENMOUDDINE', l4pm:'C8 HADHURAMI',
+    l3matin:'D7 COMBO + D12 VELOU', l3pm:'D13 MOURIDI + D14 LAYDINE' },
+  { date:'31/05', label:'Dim',
+    l4matin:'C10 ISSIHAKA',  l4pm:'C14 KAMARDINE',
+    l3matin:'D7 COMBO + D12 VELOU', l3pm:'D8 ISSOUF + D14 LAYDINE' },
+];
+const STATS = {
+  trajets:{th:642,ef:618,non:24,taux:96.3},
+  retards:{plus10:18,ponct:94.2},
+  voy:{total:8412,moy:271,parTj:13.6},
+  parCh:[
+    {code:'C1', nom:'EL ANZIZE Hamada',        trajets:84,retards:2,vy:1148},
+    {code:'C14',nom:'KAMARDINE Mansour',        trajets:81,retards:3,vy:1102},
+    {code:'C8', nom:'HADHURAMI Makinedine',     trajets:78,retards:4,vy:1056},
+    {code:'C5', nom:'AHAMADI Raenmouddine',     trajets:72,retards:1,vy:982},
+    {code:'C10',nom:"ISSIHAKA M'Changama",      trajets:65,retards:2,vy:884},
+    {code:'C6', nom:'OUSSENI Soula',            trajets:70,retards:5,vy:942},
+  ],
+};
+const INVOICES = [
+  {id:'F2026-0146',driver:'C1 · EL ANZIZE Hamada',       week:'S19',amount:'1 850,00',status:'draft'},
+  {id:'F2026-0147',driver:'C14 · KAMARDINE Mansour',      week:'S19',amount:'1 410,00',status:'draft'},
+  {id:'F2026-0148',driver:'C8 · HADHURAMI Makinedine',   week:'S19',amount:'1 320,00',status:'draft'},
+  {id:'F2026-0149',driver:'C5 · AHAMADI Raenmouddine',   week:'S19',amount:'1 180,00',status:'draft'},
+  {id:'F2026-0144',driver:'D7 · COMBO Said',              week:'S18',amount:'980,00',status:'validated'},
+  {id:'F2026-0145',driver:"D12 · VELOU M'Berou",          week:'S18',amount:'1 100,00',status:'validated'},
+  {id:'F2026-0142',driver:'D1 · MOHAMED Ali',             week:'S18',amount:'1 240,00',status:'paid'},
+  {id:'F2026-0143',driver:'D5 · AMINA Selemani',          week:'S18',amount:'1 380,50',status:'paid'},
+];
+const AUDIT = [
+  {day:"Aujourd'hui · vendredi 8 mai",items:[
+    {t:'11:42',who:'M. Aubin · Direction',action:'Remplacement',target:'D1 → D5 · 14:40 Doujani',reason:'Panne véhicule',kind:'replace',notify:'✓ FCM D5 + D1'},
+    {t:'11:14',who:'Y. Hamada · Coord. matin L3',action:'Course ajoutée',target:'D14 · 16:00 Passot Barge',reason:'Demande CADEMA',kind:'add'},
+    {t:'09:02',who:'M. Aubin · Direction',action:'Annulation',target:'D7 · 10:00 Passot Barge',reason:'Route bloquée',kind:'remove',notify:'✓ FCM D7 + CADEMA'},
+    {t:'08:31',who:'Système',action:'Notification reçue',target:'D7 · vocal incident',reason:'0:33 · transcription auto',kind:'system'},
+  ]},
+  {day:'Hier · jeudi 7 mai',items:[
+    {t:'17:20',who:'M. Aubin · Direction',action:'Validation hebdo',target:'Planning S19 · L3 + L4',kind:'validate'},
+    {t:'14:08',who:'M. Kamardine · Coord. PM L3',action:'Décalage horaire',target:'D5 · 5:20 → 5:40',reason:'Demande chauffeur',kind:'edit'},
+    {t:'11:55',who:'M. Aubin · Direction',action:'Remplacement',target:'D12 → D14 · mardi 14:00',reason:'Congé maladie',kind:'replace',notify:'✓ FCM D14'},
+  ]},
+];
+const kindColor = {replace:'var(--brand)',add:'var(--success)',remove:'var(--danger)',validate:'var(--stroke)',edit:'var(--info)',system:'var(--stroke3)'};
+const DAYS = ['Lun 4','Mar 5','Mer 6','Jeu 7','Ven 8','Sam 9','Dim 10'];
+const HOURS = Array.from({length:18},(_,i)=>i+4);
+
+// ─── SHARED COMPONENTS ────────────────────────────────────────────────────────
+const Eyebrow = ({children,color})=>(
+  <div className="eyebrow" style={color?{color}:{}}>{children}</div>
+);
+const Pill = ({children,variant='',dot})=>(
+  <span className={`pill ${variant}`}>{dot&&<span className="dot"/>}{children}</span>
+);
+const Btn = ({children,accent,danger,sm,onClick,style})=>(
+  <button className={`btn${accent?' btn-accent':''}${danger?' btn-danger':''}${sm?' btn-sm':''}`} onClick={onClick} style={style}>{children}</button>
+);
+const PageBar = ({title,sub,actions=[]})=>(
+  <div className="page-bar">
+    <div className="pb-left">
+      <div className="eyebrow">{sub}</div>
+      <h1>{title}</h1>
+    </div>
+    <div className="pb-actions">
+      {actions.map((a,i)=><Btn key={i} accent={a.accent} onClick={a.onClick}>{a.l}</Btn>)}
+    </div>
+  </div>
+);
+const Sparkline = ()=>(
+  <svg className="sparkline" viewBox="0 0 200 60" preserveAspectRatio="none">
+    <polyline points="0,40 20,32 40,38 60,28 80,30 100,22 120,25 140,15 160,20 180,12 200,8"
+      fill="none" stroke="var(--brand)" strokeWidth="2"/>
+    <polyline points="0,40 20,32 40,38 60,28 80,30 100,22 120,25 140,15 160,20 180,12 200,8 200,60 0,60"
+      fill="var(--accent-soft)" stroke="none"/>
+  </svg>
+);
+const KpiCard = ({label,value,delta,big,danger})=>(
+  <div className="kpi-block" style={danger?{borderColor:'var(--danger)',position:'relative'}:{}}>
+    {danger&&<span style={{position:'absolute',top:8,right:8,width:10,height:10,borderRadius:'50%',background:'var(--danger)',animation:'pulse-ring 1.4s infinite'}}/>}
+    <Eyebrow>{label}</Eyebrow>
+    <div className="kpi-val" style={big?{fontSize:36}:{}}>{value}</div>
+    {delta&&<div className="kpi-sub">{delta}</div>}
+  </div>
+);
+const StatusPill = ({s})=>{
+  const m={draft:['Reçue',''],validated:['Validé','live'],paid:['Payé','done']};
+  const [l,v]=m[s]||['?',''];
+  return <Pill variant={v} dot>{l}</Pill>;
+};
+
+// ─── ALERT BANNER ─────────────────────────────────────────────────────────────
+const AlertBanner = ({driver,message,age,onDismiss,onReplace})=>(
+  <div className="alert-banner">
+    <div className="alert-stripe">!</div>
+    <div style={{display:'flex',alignItems:'center',padding:'0 12px 0 14px'}}>
+      <div className="alert-pulse"/>
+    </div>
+    <div style={{flex:1,padding:'8px 0',display:'flex',flexDirection:'column',justifyContent:'center'}}>
+      <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+        <span className="alert-badge">Incident</span>
+        <span style={{fontSize:13,fontWeight:700}}>{driver}</span>
+        <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)'}}>il y a {age}</span>
+      </div>
+      <div style={{fontSize:12,color:'var(--stroke)',marginTop:2}}>{message}</div>
+    </div>
+    <div style={{display:'flex',alignItems:'center',gap:6,paddingRight:10}}>
+      <Btn sm>▶ Écouter</Btn>
+      <Btn sm danger onClick={onReplace}>⇄ Remplacer</Btn>
+      <Btn sm onClick={onDismiss}>✕</Btn>
+    </div>
+  </div>
+);
+
+// ─── MAP SVG ──────────────────────────────────────────────────────────────────
+const MapBg = ({dark})=>{
+  const d = dark;
+  return (
+    <div style={{position:'absolute',inset:0,background:d?'#1a1d24':'#eef0f3',overflow:'hidden'}}>
+      <svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice"
+        style={{position:'absolute',inset:0,width:'100%',height:'100%'}}>
+        <defs>
+          <pattern id="lagon" width="24" height="24" patternUnits="userSpaceOnUse">
+            <path d="M0 12 Q6 8 12 12 T24 12" fill="none"
+              stroke={d?'rgba(160,200,230,0.10)':'rgba(120,170,200,0.18)'} strokeWidth="1"/>
+          </pattern>
+        </defs>
+        <rect width="1000" height="700" fill={d?'#1a1d24':'#dfe7ec'}/>
+        <rect width="1000" height="700" fill="url(#lagon)"/>
+        <path d="M 80 380 Q 60 240 180 140 Q 320 70 480 90 Q 640 110 760 200 Q 880 300 880 440 Q 880 580 740 620 Q 580 660 420 620 Q 240 580 130 500 Q 70 440 80 380 Z"
+          fill="none" stroke={d?'rgba(120,180,210,0.22)':'rgba(100,160,190,0.45)'} strokeWidth="1.5" strokeDasharray="4 6"/>
+        <path d="M 290 130 Q 360 110 410 145 Q 460 175 470 230 Q 480 280 460 320 L 480 360 Q 510 400 500 460 Q 490 510 460 540 Q 440 565 400 575 Q 360 580 330 555 Q 295 525 285 480 Q 270 440 285 405 Q 270 380 280 340 Q 250 310 245 270 Q 240 220 260 180 Q 275 145 290 130 Z"
+          fill={d?'#2a2e38':'#cdd6c8'} stroke={d?'#3b4250':'#a8b3a3'} strokeWidth="1.5"/>
+        <path d="M 600 240 Q 640 230 660 250 Q 670 280 655 305 Q 640 320 615 315 Q 595 305 590 285 Q 585 260 600 240 Z"
+          fill={d?'#2a2e38':'#cdd6c8'} stroke={d?'#3b4250':'#a8b3a3'} strokeWidth="1.5"/>
+        <path d="M 410 250 L 425 290 L 440 340 L 425 395 L 395 450 L 360 490"
+          fill="none" stroke={d?'rgba(255,255,255,0.32)':'rgba(80,80,80,0.55)'} strokeWidth="2.5"/>
+        <path d="M 380 415 L 395 380 L 412 340 L 422 295 L 415 250"
+          fill="none" stroke={d?'rgba(255,255,255,0.32)':'rgba(80,80,80,0.55)'} strokeWidth="2.5"/>
+        <path d="M 425 270 Q 510 250 600 270"
+          fill="none" stroke={d?'rgba(160,200,230,0.5)':'rgba(80,140,180,0.6)'} strokeWidth="1.5" strokeDasharray="3 4"/>
+        {[{x:408,y:244,t:'MAMOUDZOU'},{x:378,y:415,t:'DOUJANI'},{x:412,y:275,t:'PASSOT'},{x:422,y:350,t:"M'TSAPERE"},
+          {x:402,y:395,t:'TSOUNDZOU'},{x:392,y:450,t:'PASSAMAINTY'},{x:350,y:495,t:'VAHIBE'},
+          {x:622,y:285,t:'PETITE-TERRE'},{x:302,y:172,t:'KOUNGOU'}].map(({x,y,t})=>(
+          <text key={t} x={x} y={y} fontSize="9" fontFamily="ui-monospace,monospace"
+            fill={d?'rgba(255,255,255,0.55)':'rgba(60,60,60,0.65)'} letterSpacing="0.5">{t}</text>
+        ))}
+        <g transform="translate(888,58)" opacity={d?.5:.55}>
+          <circle r="18" fill="none" stroke={d?'rgba(255,255,255,0.4)':'rgba(60,60,60,0.5)'} strokeWidth="1"/>
+          <path d="M 0 -16 L 4 0 L 0 4 L -4 0 Z" fill={d?'rgba(255,255,255,0.6)':'rgba(60,60,60,0.7)'}/>
+          <text x="0" y="-22" textAnchor="middle" fontSize="9" fontFamily="ui-monospace,monospace" fill={d?'rgba(255,255,255,0.5)':'rgba(60,60,60,0.6)'}>N</text>
+        </g>
+      </svg>
+    </div>
+  );
+};
+
+const TaxiPin = ({left,top,kind,label})=>{
+  const c=kind==='live'?'#2e8b57':kind==='late'?'#e8a523':kind==='offline'?'#817A7C':'var(--brand)';
+  return (
+    <div style={{position:'absolute',left,top,transform:'translate(-50%,-100%)',textAlign:'center',zIndex:2}}>
+      <div style={{width:28,height:28,borderRadius:'50%',background:c,border:'2.5px solid #fff',
+        boxShadow:'0 4px 10px rgba(0,0,0,.25)',display:'flex',alignItems:'center',justifyContent:'center',
+        color:'#fff',fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700}}>{label}</div>
+      <div style={{width:0,height:0,borderLeft:'5px solid transparent',borderRight:'5px solid transparent',
+        borderTop:`8px solid ${c}`,margin:'0 auto'}}/>
+    </div>
+  );
+};
+
+// ─── VIEWS ────────────────────────────────────────────────────────────────────
+
+// 01 – Planning Gantt
+const GANTT_START = 4, GANTT_SPAN = 18; // 04h → 22h
+const toPos = h => ((h - GANTT_START) / GANTT_SPAN) * 100;
+const parseTime = s => { if (!s) return null; const [h, m] = s.split(':'); return parseInt(h) + parseInt(m) / 60; };
+
+// Direction labels per line (AM = aller, PM = retour)
+const LINE_DIR = {
+  L3:  { am:'→ Passot La Barge', pm:'→ Doujani',      route:'Doujani ↔ Passot Barge' },
+  L4:  { am:'→ Passamainty',     pm:'→ Vahibe',        route:'Vahibe ↔ PEM Passamainty' },
+  CHM: { am:'→ La Barge',        pm:'→ CHM',           route:'CHM ↔ La Barge · 13 arrêts' },
+};
+
+const GanttRow = ({dr, lineLabel, lineColor, onReplace, incident}) => {
+  const amParts = (dr.am||'').split('-');
+  const pmParts = (dr.pm||'').split('-');
+  const amStart = parseTime(amParts[0]), amEnd = parseTime(amParts[1]);
+  const pmStart = parseTime(pmParts[0]), pmEnd = parseTime(pmParts[1]);
+  const astrSegs = dr.astr ? dr.astr.split('·').map(s=>s.trim()) : [];
+  const dir = LINE_DIR[lineLabel] || {am:'AM',pm:'PM',route:lineLabel};
+
+  // Is this a full-day service (no separate PM, just one long AM block)?
+  const isFullDay = amStart!=null && amEnd!=null && pmStart==null;
+
+  return (
+    <div style={{display:'grid',gridTemplateColumns:'230px 1fr',borderBottom:'1px solid var(--stroke3)',minHeight:52}}>
+      {/* ── Left column : driver identity ── */}
+      <div style={{padding:'7px 10px',borderRight:'1.5px solid var(--stroke)',display:'flex',flexDirection:'column',justifyContent:'center',gap:2,
+        background:incident?'rgba(209,58,42,0.06)':'transparent'}}>
+        <span style={{display:'flex',alignItems:'center',gap:5}}>
+          <span style={{width:7,height:7,borderRadius:'50%',background:lineColor,flexShrink:0}}/>
+          <span style={{fontWeight:700,fontSize:12,color:'var(--stroke)'}}>{dr.nom}</span>
+          {incident&&<span style={{fontSize:10,color:'var(--danger)',fontWeight:700}}>⚠</span>}
+        </span>
+        <span style={{display:'flex',alignItems:'center',gap:5,paddingLeft:12}}>
+          <span style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,color:lineColor,padding:'0px 4px',border:`1px solid ${lineColor}`,borderRadius:2,letterSpacing:'.04em'}}>{lineLabel}</span>
+          <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--stroke2)'}}>
+            {lineLabel==='L3'?'Doujani ↔ Barge':lineLabel==='L4'?'Vahibe ↔ PEM':'CHM ↔ Barge'}
+          </span>
+          <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--stroke3)'}}>{dr.code}</span>
+          {dr.dimJF&&<span style={{fontFamily:'var(--font-mono)',fontSize:7,color:'var(--info)',padding:'1px 3px',border:'1px solid var(--info)',borderRadius:2,marginLeft:2}}>{dr.dimJF}</span>}
+          <button onClick={()=>onReplace(dr)} title="Remplacer" style={{marginLeft:'auto',fontSize:11,color:'var(--stroke3)',cursor:'pointer',background:'none',border:'1px solid var(--stroke3)',borderRadius:3,padding:'1px 5px',lineHeight:1.2,transition:'all .12s'}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--brand)';e.currentTarget.style.color='var(--brand)'}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--stroke3)';e.currentTarget.style.color='var(--stroke3)'}}>⇄</button>
+        </span>
+      </div>
+
+      {/* ── Right column : Gantt bars ── */}
+      <div style={{position:'relative',background:incident?'rgba(209,58,42,0.03)':'transparent'}}>
+        {HOURS.map(h=>(
+          <div key={h} style={{position:'absolute',left:`${toPos(h)}%`,top:0,bottom:0,borderLeft:'1px solid var(--stroke4)'}}/>
+        ))}
+        {/* Astreinte dashed bars */}
+        {astrSegs.map((seg,si)=>{
+          const [a,b] = seg.split('-');
+          const s = parseTime(a), e = parseTime(b);
+          if(s==null||e==null) return null;
+          return <div key={si} className="gantt-bar" style={{left:`${toPos(s)}%`,width:`${toPos(e)-toPos(s)}%`,
+            background:'transparent',border:'1.5px dashed var(--warn)',color:'var(--warn)',fontSize:9,top:2,bottom:'auto',height:10}}>{si===0?'astr':''}</div>;
+        })}
+        {/* AM bar — direction aller */}
+        {amStart!=null&&amEnd!=null&&(
+          <div className="gantt-bar" style={{left:`${toPos(amStart)}%`,width:`${toPos(amEnd)-toPos(amStart)}%`,
+            background:incident?'var(--warn)':lineColor,color:'#fff',display:'flex',alignItems:'center',gap:4,overflow:'hidden'}}>
+            <span style={{opacity:.7,fontSize:9,flexShrink:0}}>▶</span>
+            <span style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+              {isFullDay ? dir.route : dir.am}
+            </span>
+          </div>
+        )}
+        {/* PM bar — direction retour */}
+        {pmStart!=null&&pmEnd!=null&&(
+          <div className="gantt-bar" style={{left:`${toPos(pmStart)}%`,width:`${toPos(pmEnd)-toPos(pmStart)}%`,
+            background:`${lineColor}22`,border:`1.5px solid ${lineColor}`,color:lineColor,display:'flex',alignItems:'center',gap:4,overflow:'hidden'}}>
+            <span style={{opacity:.7,fontSize:9,flexShrink:0}}>▶</span>
+            <span style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{dir.pm}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ViewPlanning = ({onShowAlert, onReplace}) => {
+  const [ligne, setLigne] = useState('Tous');
+  const [showJF, setShowJF] = useState(false);
+  const lignes = ['Tous','L3','L4','CHM'];
+  const allDrivers = [
+    ...L3.map(d=>({...d,_ligne:'L3',_color:'var(--brand)'})),
+    ...L4.map(d=>({...d,_ligne:'L4',_color:'var(--info)'})),
+    ...CHM.map(d=>({...d,_ligne:'CHM',_color:'var(--success)'})),
+  ];
+  const shown = ligne==='Tous' ? allDrivers : allDrivers.filter(d=>d._ligne===ligne);
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <PageBar title="Planning hebdo · vue Gantt" sub="Direction · Semaine 19 · 4–10 mai 2026"
+        actions={[{l:'Imprimer'},{l:'Dupliquer S-1'},{l:'+ Course',accent:true}]}/>
+      {/* Filtres */}
+      <div style={{padding:'7px 20px',borderBottom:'1px dashed var(--stroke3)',background:'var(--paper)',display:'flex',gap:6,alignItems:'center',flexShrink:0,flexWrap:'wrap'}}>
+        <Eyebrow>Ligne</Eyebrow>
+        {lignes.map(l=>(
+          <span key={l} onClick={()=>setLigne(l)} style={{cursor:'pointer'}}>
+            <Pill variant={ligne===l?'active-dark':''}>{l}</Pill>
+          </span>
+        ))}
+        <div style={{width:1,height:16,background:'var(--stroke3)',margin:'0 4px'}}/>
+        <span style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'var(--stroke2)'}}>
+          <span style={{width:10,height:4,background:'var(--stroke)',borderRadius:1,display:'inline-block'}}/>AM
+          <span style={{width:10,height:4,border:'1px solid var(--stroke)',borderRadius:1,display:'inline-block',marginLeft:6}}/>PM
+          <span style={{width:10,height:4,border:'1px dashed var(--warn)',borderRadius:1,display:'inline-block',marginLeft:6}}/>Astreinte
+        </span>
+        <span style={{marginLeft:'auto',display:'flex',gap:6,alignItems:'center'}}>
+          <Btn sm onClick={()=>setShowJF(v=>!v)}>📅 Dim · JF mai</Btn>
+          {onShowAlert&&<Btn sm onClick={onShowAlert}>⚠ Voir alerte</Btn>}
+        </span>
+      </div>
+      {/* Panneau Dimanche/JF */}
+      {showJF&&(
+        <div style={{borderBottom:'1.5px solid var(--stroke)',background:'#fff',flexShrink:0,padding:'12px 20px',overflowX:'auto'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+            <Eyebrow>Astreintes Dimanche &amp; Jours Fériés — Mai 2026</Eyebrow>
+            <button onClick={()=>setShowJF(false)} style={{fontSize:13,color:'var(--stroke2)',background:'none',border:'none',cursor:'pointer'}}>✕</button>
+          </div>
+          <table style={{fontSize:11,minWidth:700}}>
+            <thead>
+              <tr>
+                <th style={{width:90}}>Date</th>
+                <th>L4 Matin</th>
+                <th>L4 Après-midi</th>
+                <th>L3 Matin</th>
+                <th>L3 Après-midi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DIMANCHES_MAI.map((j,i)=>(
+                <tr key={i} style={{background:j.jourFerie?'rgba(242,100,25,0.07)':'transparent'}}>
+                  <td style={{fontFamily:'var(--font-mono)',fontWeight:700,whiteSpace:'nowrap'}}>
+                    {j.date}
+                    {j.jourFerie&&<span style={{marginLeft:6,fontSize:9,color:'var(--brand)',padding:'1px 4px',border:'1px solid var(--brand)',borderRadius:2}}>{j.label}</span>}
+                  </td>
+                  <td style={{color:'var(--info)',fontWeight:600}}>{j.l4matin}</td>
+                  <td style={{color:'var(--info)'}}>{j.l4pm}</td>
+                  <td style={{color:'var(--brand)',fontWeight:600}}>{j.l3matin}</td>
+                  <td style={{color:'var(--brand)'}}>{j.l3pm}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="scroll" style={{background:'var(--paper)'}}>
+        {/* Ruler */}
+        <div style={{display:'grid',gridTemplateColumns:'220px 1fr',borderBottom:'1.5px solid var(--stroke)',position:'sticky',top:0,background:'#fff',zIndex:2}}>
+          <div style={{padding:'7px 10px',fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'.12em',textTransform:'uppercase',borderRight:'1.5px solid var(--stroke)',color:'var(--stroke2)'}}>
+            Ven 8 mai 2026
+          </div>
+          <div style={{display:'flex'}}>
+            {HOURS.map(h=>(
+              <div key={h} style={{flex:1,padding:'7px 2px',fontFamily:'var(--font-mono)',fontSize:9,
+                color:h<6||h>20?'var(--stroke3)':'var(--stroke2)',borderLeft:'1px solid var(--stroke4)',textAlign:'center',
+                background:h===new Date().getHours()?'rgba(242,100,25,0.06)':'transparent'}}>
+                {String(h).padStart(2,'0')}h
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Sections par ligne */}
+        {(['L3','L4','CHM']).filter(l=>ligne==='Tous'||ligne===l).map(l=>{
+          const lineDrivers = shown.filter(d=>d._ligne===l);
+          if(!lineDrivers.length) return null;
+          const lineLabel = l==='L3'?'Doujani ↔ Passot Barge':l==='L4'?'Vahibe ↔ Passamainty':'CHM ↔ La Barge';
+          const lineColor = l==='L3'?'var(--brand)':l==='L4'?'var(--info)':'var(--success)';
+          return (
+            <div key={l}>
+              <div style={{padding:'5px 10px 5px 14px',background:'var(--ink-100)',borderBottom:'1px solid var(--stroke3)',display:'flex',alignItems:'center',gap:8}}>
+                <span style={{width:8,height:8,borderRadius:'50%',background:lineColor}}/>
+                <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase'}}>{l}</span>
+                <span style={{fontSize:11,color:'var(--stroke2)'}}>{lineLabel}</span>
+                <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--stroke3)',marginLeft:'auto'}}>{lineDrivers.length} chauffeurs</span>
+              </div>
+              {lineDrivers.map((dr,i)=>(
+                <GanttRow key={dr.code} dr={dr} lineLabel={l} lineColor={lineColor}
+                  onReplace={onReplace} incident={l==='L3'&&dr.code==='D7'}/>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// 02 – KPI Dashboard
+const ViewKPI = ()=>(
+  <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <PageBar title="Tableau de bord KPI" sub="Direction · Semaine 19"
+      actions={[{l:'Jour'},{l:'Semaine'},{l:'Mois'},{l:'Exporter'}]}/>
+    <div className="scroll" style={{padding:24,display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{display:'grid',gap:16,gridTemplateColumns:'repeat(4,1fr)'}}>
+        <KpiCard label="CA semaine" value="12 480 €" delta="↑ 6 % vs S-1"/>
+        <KpiCard label="Courses réalisées" value="187" delta="↑ 12 vs S-1"/>
+        <KpiCard label="Ponctualité" value="94,2 %" delta="retards >10 mn : 18"/>
+        <KpiCard label="Incidents ouverts" value="1" delta="D7 · COMBO Said · panne moteur" danger/>
+      </div>
+      <div style={{display:'grid',gap:16,gridTemplateColumns:'2fr 1fr'}}>
+        <div className="card" style={{padding:18}}>
+          <Eyebrow>Chiffre d'affaire · semaine / mois / année</Eyebrow>
+          <Sparkline/>
+          <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)',marginTop:4}}>
+            {DAYS.map(d=><span key={d}>{d.split(' ')[0]}</span>)}
+          </div>
+        </div>
+        <div className="card" style={{padding:18}}>
+          <Eyebrow>Trajets non effectués · 30 j</Eyebrow>
+          <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:8}}>
+            <div style={{fontFamily:'var(--font-mono)',fontSize:32,fontWeight:700}}>24</div>
+            <span style={{fontSize:11,color:'var(--stroke2)'}}>panne véhicule = cause #1</span>
+          </div>
+          <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:8}}>
+            {[['Voiture en panne',9,'var(--danger)'],['Absence chauffeur',7,'var(--warn)'],['Météo / route bloquée',5,'var(--info)'],['Autre',3,'var(--stroke2)']].map(([l,n,c])=>(
+              <div key={l} style={{display:'grid',gridTemplateColumns:'1fr 120px 24px',gap:8,alignItems:'center',fontSize:12}}>
+                <span>{l}</span>
+                <div style={{height:8,background:'var(--stroke4)',borderRadius:2,position:'relative'}}>
+                  <div style={{position:'absolute',inset:0,width:`${(n/9)*100}%`,background:c,borderRadius:2}}/>
+                </div>
+                <span style={{fontFamily:'var(--font-mono)',fontWeight:700,textAlign:'right'}}>{n}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="card" style={{padding:18}}>
+        <Eyebrow>Trajets réalisés par chauffeur · L4 · mars 2026</Eyebrow>
+        <div style={{marginTop:14,display:'flex',flexDirection:'column',gap:10}}>
+          {STATS.parCh.map((r,i)=>(
+            <div key={i} style={{display:'grid',gridTemplateColumns:'220px 1fr 60px',alignItems:'center',gap:10}}>
+              <span style={{fontSize:12}}>{r.code} · {r.nom}</span>
+              <div style={{height:14,background:'var(--stroke4)',borderRadius:3}}>
+                <div style={{width:`${(r.trajets/84)*100}%`,height:'100%',background:'var(--stroke)',borderRadius:3}}/>
+              </div>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:12,fontWeight:700,textAlign:'right'}}>{r.trajets}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{display:'grid',gap:16,gridTemplateColumns:'repeat(4,1fr)'}}>
+        <KpiCard label="Trajets théoriques" value="642" delta="• 24 non eff."/>
+        <KpiCard label="Taux réalisation" value="96,3 %" delta="objectif 95 %"/>
+        <KpiCard label="Voy. moyen / trajet" value="13,6" delta="objectif 12,0"/>
+        <KpiCard label="Voy. moyen / jour" value="271" delta="31 j · L4 mars 2026"/>
+      </div>
+    </div>
+  </div>
+);
+
+// 03 – Carte GPS
+const ViewMap = ({replayMode,setReplayMode})=>(
+  <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div style={{padding:'14px 24px',borderBottom:'1.5px solid var(--stroke)',display:'flex',alignItems:'center',justifyContent:'space-between',background:replayMode?'#fff':'var(--stroke)',color:replayMode?'var(--stroke)':'#fff',flexShrink:0}}>
+      <div>
+        <div style={{fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'.16em',textTransform:'uppercase',opacity:.6}}>
+          {replayMode?'Historique trajectoire · D1 MOHAMED Ali · Vendredi 8 mai':'Mode opérationnel · live'}
+        </div>
+        <div style={{fontSize:18,fontWeight:700,marginTop:2}}>
+          {replayMode?'Replay GPS · L3':'Carte GPS temps réel'}
+        </div>
+      </div>
+      <div style={{display:'flex',gap:8}}>
+        <button className="btn" onClick={()=>setReplayMode(false)}
+          style={{background:!replayMode?'rgba(255,255,255,0.18)':'#fff',color:!replayMode?'#fff':'var(--stroke)',borderColor:!replayMode?'rgba(255,255,255,0.3)':'var(--stroke)'}}>Live</button>
+        <button className="btn" onClick={()=>setReplayMode(true)}
+          style={{background:replayMode?'var(--brand)':'rgba(255,255,255,0.06)',color:replayMode?'#fff':'#fff',borderColor:replayMode?'var(--brand)':'rgba(255,255,255,0.2)'}}>Historique</button>
+        {replayMode&&<button className="btn" style={{background:'transparent',color:'var(--stroke)',borderColor:'var(--stroke)'}} onClick={()=>setReplayMode(false)}>Exporter GPX</button>}
+      </div>
+    </div>
+    <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+      <div className="map-wrap">
+        <MapBg dark={!replayMode}/>
+        {!replayMode&&(<>
+          <TaxiPin left="41%" top="36%" kind="live" label="D1"/>
+          <TaxiPin left="38%" top="59%" kind="live" label="D5"/>
+          <TaxiPin left="40%" top="50%" kind="late" label="D7"/>
+          <TaxiPin left="39%" top="65%" kind="live" label="D12"/>
+          <TaxiPin left="35%" top="71%" kind="offline" label="C5"/>
+          <TaxiPin left="62%" top="40%" kind="live" label="C14"/>
+          {/* KPI overlay */}
+          <div style={{position:'absolute',left:16,top:16,display:'flex',gap:10,zIndex:3}}>
+            {[['Live','4','var(--success)'],['Retard','1','var(--warn)'],['Hors-ligne','1','var(--stroke2)']].map(([l,v,c])=>(
+              <div key={l} style={{background:'rgba(0,0,0,.65)',color:'#fff',padding:'8px 14px',borderRadius:6,fontFamily:'var(--font-mono)'}}>
+                <div style={{fontSize:9,letterSpacing:'.14em',textTransform:'uppercase',color:'rgba(255,255,255,.55)'}}>{l}</div>
+                <div style={{fontSize:22,fontWeight:700,color:c}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          {/* Legend */}
+          <div className="card" style={{position:'absolute',left:16,bottom:16,padding:'10px 14px',fontSize:11,background:'rgba(255,255,255,.96)',zIndex:3}}>
+            <Eyebrow>Légende</Eyebrow>
+            <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:8}}>
+              {[['#2e8b57','En cours'],['#e8a523','Retard'],['#817A7C','Hors-ligne']].map(([c,l])=>(
+                <span key={l} style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{width:10,height:10,borderRadius:'50%',background:c,display:'inline-block'}}/>
+                  {l}
+                </span>
+              ))}
+            </div>
+          </div>
+          {/* Zoom */}
+          <div style={{position:'absolute',right:16,top:16,display:'flex',flexDirection:'column',gap:4,zIndex:3}}>
+            {['+','−','⊕'].map(s=><button key={s} className="btn" style={{width:36,height:36,background:'rgba(255,255,255,.95)'}}>{s}</button>)}
+          </div>
+        </>)}
+        {replayMode&&(<>
+          <svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" style={{position:'absolute',inset:0,width:'100%',height:'100%',zIndex:2}}>
+            <path d="M 380 415 L 395 380 L 412 340 Q 420 305 415 270 L 415 250" stroke="var(--brand)" strokeWidth="4" fill="none"/>
+            <circle cx="380" cy="415" r="8" fill="var(--success)" stroke="#fff" strokeWidth="2.5"/>
+            <circle cx="415" cy="250" r="5" fill="#fff" stroke="var(--brand)" strokeWidth="2"/>
+            <circle cx="395" cy="380" r="7" fill="var(--danger)" stroke="#fff" strokeWidth="2.5"/>
+          </svg>
+          {/* Scrubber */}
+          <div className="card" style={{position:'absolute',left:16,right:16,bottom:16,padding:14,background:'rgba(255,255,255,.97)',zIndex:3}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <Eyebrow>D1 · MOHAMED Ali · Lecture 11:42</Eyebrow>
+              <div style={{display:'flex',gap:4}}>
+                {['◀◀','▶','▶▶','×2'].map((s,i)=>(
+                  <button key={i} className={`btn${i===1?' btn-accent':''}`} style={{width:i===1?40:36,height:32,fontSize:12}}>{s}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{height:8,background:'var(--stroke4)',borderRadius:999,position:'relative'}}>
+              <div style={{width:'52%',height:'100%',background:'var(--brand)',borderRadius:999}}/>
+              <div style={{position:'absolute',left:'52%',top:'50%',transform:'translate(-50%,-50%)',width:16,height:16,borderRadius:'50%',background:'#fff',border:'2.5px solid var(--brand)'}}/>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)',marginTop:4}}>
+              {['06:00','10:00','14:00','18:00','22:00'].map(t=><span key={t}>{t}</span>)}
+            </div>
+          </div>
+          {/* Events */}
+          <div className="card" style={{position:'absolute',right:16,top:16,bottom:80,width:260,overflow:'auto',background:'rgba(255,255,255,.97)',padding:14,zIndex:3}}>
+            <Eyebrow>Évènements · 12</Eyebrow>
+            {[['5:00','Départ DOUJANI','done'],['5:30','Arrivée Passot Barge','done'],['5:34','Voie bloquée (incident)','incident'],['6:00','Reprise depuis DOUJANI','done'],['8:30','Position · PEM','live']].map(([t,n,k],i)=>(
+              <div key={i} style={{display:'flex',gap:10,padding:'10px 0',borderBottom:'1px dashed var(--stroke3)'}}>
+                <span style={{fontFamily:'var(--font-mono)',fontSize:11,fontWeight:700,color:'var(--stroke2)',width:38}}>{t}</span>
+                <span style={{flex:1,fontSize:12}}>{n}</span>
+                <span style={{width:8,height:8,borderRadius:'50%',background:k==='incident'?'var(--danger)':k==='live'?'var(--brand)':'var(--success)',marginTop:6,flexShrink:0}}/>
+              </div>
+            ))}
+          </div>
+        </>)}
+      </div>
+    </div>
+  </div>
+);
+
+// 04 – Factures Kanban
+const ViewInvoices = ({onNew})=>{
+  const cols = [
+    {title:'Reçue · à valider',key:'draft',count:8},
+    {title:'Validée · à payer',key:'validated',count:3},
+    {title:'Payée',key:'paid',count:12},
+  ];
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <PageBar title="Factures de rétrocession · vue Kanban" sub="Direction · Factures"
+        actions={[{l:'Vue liste'},{l:'+ Nouvelle facture',accent:true,onClick:onNew}]}/>
+      <div className="scroll" style={{padding:24,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>
+        {cols.map(col=>(
+          <div key={col.key} className="card" style={{padding:14,background:'var(--paper)',display:'flex',flexDirection:'column',gap:10}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <Eyebrow>{col.title}</Eyebrow>
+              <Pill>{col.count}</Pill>
+            </div>
+            {INVOICES.filter(iv=>iv.status===col.key).map(iv=>(
+              <div key={iv.id} className="card" style={{padding:12,background:'#fff'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:12}}>{iv.id}</span>
+                  <StatusPill s={iv.status}/>
+                </div>
+                <div style={{fontSize:12,marginTop:6,color:'var(--stroke)'}}>{iv.driver}</div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8}}>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--stroke2)',letterSpacing:'.1em',textTransform:'uppercase'}}>{iv.week}</span>
+                  <span style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:16}}>{iv.amount} €</span>
+                </div>
+                {iv.status==='draft'&&(
+                  <div style={{display:'flex',gap:6,marginTop:10}}>
+                    <Btn sm style={{flex:1}}>Aperçu PDF</Btn>
+                    <Btn sm accent style={{flex:1}}>Valider →</Btn>
+                  </div>
+                )}
+                {iv.status==='validated'&&(
+                  <Btn sm accent style={{width:'100%',marginTop:10}}>Mettre en paiement</Btn>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── Helpers doc status (module level, shared) ───────────────────────────────
+const getDocStatus = doc => {
+  if(!doc) return {st:'missing',color:'var(--stroke2)',label:'Manquant'};
+  const days = (new Date(doc.e) - TODAY_DOC) / 86400000;
+  if(days < 0)  return {st:'expired',color:'var(--danger)',label:'Expiré'};
+  if(days < 60) return {st:'soon',   color:'var(--warn)',  label:'À renouveler'};
+  return          {st:'ok',    color:'var(--success)',label:'Valide'};
+};
+const formatDocDate = e => e ? e.split('-').reverse().join('/') : '—';
+
+// ─── Period KPI data factory ──────────────────────────────────────────────────
+const PERIOD_DATA = (sel, isChm) => {
+  const b = isChm ? 680 : 1060;
+  const v = ((sel % 9) + 1);
+  return {
+    jour:    {courses:3,           passagers:v+9,       ca:`${(b/22+v*3).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')} €`, inc:0,   label:"Aujourd'hui"},
+    semaine: {courses:17+v,        passagers:55+v*3,    ca:`${(b+v*30).toLocaleString('fr-FR')} €`,    inc:1,   label:'Semaine en cours (S19)'},
+    mois:    {courses:68+v*2,      passagers:228+v*8,   ca:`${(b*4+v*100).toLocaleString('fr-FR')} €`, inc:2+Math.floor(v/3), label:'Mai 2026'},
+    annee:   {courses:840+v*10,    passagers:2890+v*30, ca:`${(b*48+v*1000).toLocaleString('fr-FR')} €`,inc:8+v, label:'Année 2026'},
+    total:   {courses:2400+v*20,   passagers:8300+v*60, ca:`${(b*138+v*3000).toLocaleString('fr-FR')} €`,inc:22+v*2,label:'Depuis le début'},
+  };
+};
+
+// 05 – Chauffeurs Master-Detail
+const ViewDrivers = ()=>{
+  const [sel,setSel] = useState(0);
+  const [period,setPeriod] = useState('semaine');
+  const all = [
+    ...L3.map(d=>({...d,_l:'L3',_color:'var(--brand)'})),
+    ...L4.map(d=>({...d,_l:'L4',_color:'var(--info)'})),
+    ...CHM.map(d=>({...d,_l:'CHM',_color:'var(--success)'})),
+  ];
+  const dr = all[sel];
+  const lineLabel = dr._l==='L3'?'L3 · Doujani ↔ Passot Barge':dr._l==='L4'?'L4 · Vahibe ↔ Passamainty':'CHM · La Barge ↔ CHM';
+  const kpi = PERIOD_DATA(sel, dr._l==='CHM')[period];
+  return (
+    <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+      {/* List */}
+      <div style={{width:280,borderRight:'1.5px solid var(--stroke)',display:'flex',flexDirection:'column',flexShrink:0}}>
+        <div style={{padding:'14px 16px',borderBottom:'1.5px solid var(--stroke)',background:'#fff'}}>
+          <div style={{fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'.16em',textTransform:'uppercase',color:'var(--stroke2)'}}>Chauffeurs · {all.length}</div>
+          <input placeholder="Rechercher…" style={{width:'100%',border:'1.25px solid var(--stroke3)',borderRadius:4,padding:'6px 8px',fontSize:12,marginTop:8,fontFamily:'var(--font-sans)'}}/>
+        </div>
+        <div className="scroll">
+          {all.map((d,i)=>(
+            <div key={i} onClick={()=>setSel(i)} style={{
+              padding:'10px 16px',borderBottom:'1px dashed var(--stroke3)',cursor:'pointer',
+              background:i===sel?'var(--accent-soft)':'transparent',
+              borderLeft:i===sel?`4px solid ${d._color}`:'4px solid transparent',
+            }}>
+              <div style={{fontWeight:600,fontSize:12,display:'flex',alignItems:'center',gap:8}}>
+                <span style={{width:7,height:7,borderRadius:'50%',background:d._color,flexShrink:0}}/>
+                {d.code} · {d.nom}
+              </div>
+              <div style={{fontSize:10,color:'var(--stroke2)',marginTop:2}}>{d._l==='L3'?'Ligne 3':d._l==='L4'?'Ligne 4':'CHM'} · {d.vehicule||'—'}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Detail */}
+      <div className="scroll" style={{flex:1,background:'var(--paper)'}}>
+        <div style={{padding:'20px 24px',borderBottom:'1.5px solid var(--stroke)',background:'#fff',display:'flex',alignItems:'center',gap:18}}>
+          <div style={{width:64,height:64,borderRadius:'50%',background:'var(--ink-100)',border:`2px solid ${dr._color}`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--font-mono)',fontSize:16,fontWeight:700,flexShrink:0,color:dr._color}}>
+            {dr.code}
+          </div>
+          <div style={{flex:1}}>
+            <Eyebrow>Chauffeur {dr.code} · {lineLabel}</Eyebrow>
+            <div style={{fontWeight:700,fontSize:22,marginTop:2}}>{dr.nom}</div>
+            <div style={{fontSize:12,color:'var(--stroke2)'}}>{dr.tel||'—'} · {dr.vehicule||'—'}{dr.astr?` · Astreinte : ${dr.astr.replace(/·/g,' / ')}`:''}</div>
+          </div>
+          <Btn>Modifier</Btn>
+          <Btn accent>Voir factures</Btn>
+        </div>
+        {/* ── Filtre période ── */}
+        <div style={{padding:'14px 24px 0',display:'flex',alignItems:'center',gap:6,borderBottom:'1.5px solid var(--stroke3)',background:'#fff'}}>
+          <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.14em',textTransform:'uppercase',color:'var(--stroke2)',marginRight:6}}>Période</span>
+          {[['jour',"Aujourd'hui"],['semaine','Semaine'],['mois','Mois'],['annee','Année'],['total','Total']].map(([k,l])=>(
+            <button key={k} onClick={()=>setPeriod(k)} style={{
+              padding:'6px 14px',borderRadius:999,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'var(--font-sans)',
+              border:`1.5px solid ${period===k?dr._color:'var(--stroke3)'}`,
+              background:period===k?dr._color:'transparent',
+              color:period===k?'#fff':'var(--stroke2)',
+              marginBottom:10,transition:'all .12s',
+            }}>{l}</button>
+          ))}
+          <span style={{marginLeft:'auto',fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)',marginBottom:10}}>{kpi.label}</span>
+        </div>
+
+        {/* ── KPI dynamiques ── */}
+        <div style={{padding:'16px 24px',display:'grid',gap:12,gridTemplateColumns:'repeat(4,1fr)'}}>
+          <KpiCard label="Courses" value={kpi.courses} delta={period==='semaine'?'↑ 2 vs S-1':period==='jour'?"Aujourd'hui":kpi.label}/>
+          <KpiCard label="Passagers" value={kpi.passagers.toLocaleString('fr-FR')} delta={`moy ${(kpi.passagers/Math.max(kpi.courses,1)).toFixed(1)}/course`}/>
+          <KpiCard label="CA généré" value={kpi.ca} delta={period==='annee'?'↑ 4 % vs N-1':period==='mois'?'↑ 6 %':period==='semaine'?'↑ 6 %':'—'}/>
+          <KpiCard label="Incidents" value={kpi.inc} delta={kpi.inc===0?'Aucun':kpi.inc===1?'voie bloquée':`sur ${kpi.label.toLowerCase()}`}/>
+        </div>
+
+        {/* ── Activité + Documents ── */}
+        <div style={{padding:'0 24px 24px',display:'grid',gap:16,gridTemplateColumns:'2fr 1fr'}}>
+          <div className="card" style={{padding:18}}>
+            <Eyebrow>Activité · {period==='jour'?'journée':period==='semaine'?'12 dernières semaines':period==='mois'?'12 derniers mois':period==='annee'?'évolution annuelle':'historique complet'}</Eyebrow>
+            <Sparkline/>
+          </div>
+          <div className="card" style={{padding:18}}>
+            <Eyebrow>Documents & RIB</Eyebrow>
+            <div style={{marginTop:10,display:'flex',flexDirection:'column',gap:0,fontSize:12}}>
+              {(()=>{
+                const docs = DOCS[dr.code]||{p:null,m:null,a:null,c:null};
+                const rib  = RIBS[dr.code];
+                const rows=[
+                  {icon:'🪪',label:'Permis B',          doc:docs.p},
+                  {icon:'📋',label:'Carte pro',          doc:docs.c},
+                  {icon:'🏥',label:'Visite médicale',    doc:docs.m},
+                  {icon:'🛡',label:'Assurance véhicule', doc:docs.a},
+                ];
+                return (<>
+                  {rows.map(({icon,label,doc})=>{
+                    const {color,label:stl} = getDocStatus(doc);
+                    return (
+                      <div key={label} style={{display:'flex',alignItems:'center',gap:7,padding:'7px 0',borderBottom:'1px dashed var(--stroke3)'}}>
+                        <span style={{fontSize:13,width:18,textAlign:'center',flexShrink:0}}>{icon}</span>
+                        <span style={{flex:1,fontSize:11}}>{label}</span>
+                        <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,color}}>
+                          {stl==='Valide'?`✓ ${formatDocDate(doc?.e)}`:stl==='À renouveler'?`⚠ ${formatDocDate(doc?.e)}`:stl==='Expiré'?`✕ ${formatDocDate(doc?.e)}`:'—'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {/* RIB row */}
+                  <div style={{display:'flex',alignItems:'center',gap:7,padding:'7px 0'}}>
+                    <span style={{fontSize:13,width:18,textAlign:'center',flexShrink:0}}>🏦</span>
+                    <span style={{flex:1,fontSize:11}}>RIB</span>
+                    {rib
+                      ? <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,color:'var(--success)'}}>✓ {rib.banque}</span>
+                      : <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,color:'var(--danger)'}}>✕ Manquant</span>
+                    }
+                  </div>
+                </>);
+              })()}
+            </div>
+          </div>
+        </div>
+        {/* ── Planning semaine enrichi ── */}
+        <div style={{padding:'0 24px 16px'}}>
+          <div className="card" style={{padding:18}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+              <Eyebrow>Programme de ligne · Semaine 19 · 4–10 mai 2026</Eyebrow>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,color:dr._color,
+                padding:'2px 8px',border:`1px solid ${dr._color}`,borderRadius:3}}>
+                {dr._l} · {LINE_DIR[dr._l]?.route||lineLabel}
+              </span>
+            </div>
+            {/* Direction legend */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:10,padding:'8px 10px',background:'var(--paper)',borderRadius:6,border:'1px solid var(--stroke4)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11}}>
+                <span style={{width:10,height:10,borderRadius:2,background:dr._color,flexShrink:0}}/>
+                <span style={{fontFamily:'var(--font-mono)',fontWeight:700}}>AM</span>
+                <span style={{color:'var(--stroke2)'}}>{LINE_DIR[dr._l]?.am||'—'}</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11}}>
+                <span style={{width:10,height:10,borderRadius:2,border:`1.5px solid ${dr._color}`,flexShrink:0}}/>
+                <span style={{fontFamily:'var(--font-mono)',fontWeight:700}}>PM</span>
+                <span style={{color:'var(--stroke2)'}}>{LINE_DIR[dr._l]?.pm||'—'}</span>
+              </div>
+            </div>
+            {/* Col headers */}
+            <div style={{display:'grid',gridTemplateColumns:'68px 1fr 1fr 90px',gap:6,paddingBottom:6,borderBottom:'1.5px solid var(--stroke3)',fontSize:9,fontFamily:'var(--font-mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--stroke2)'}}>
+              <span>Jour</span><span>Matin</span><span>Soir / PM</span><span style={{textAlign:'right'}}>Note</span>
+            </div>
+            {DAYS.map((day,i)=>{
+              const isSun = i===6, isSat = i===5;
+              // Dimanche / JF logic
+              let amVal = dr.am||null, pmVal = dr.pm||null;
+              let note = null;
+              if(isSun||isSat){
+                if(isSun){
+                  if(!dr.dimJF){ amVal=null; pmVal=null; note='Repos'; }
+                  else if(dr.dimJF==='matin'){ pmVal=null; note='Dim matin'; }
+                  else if(dr.dimJF==='matin 1/2'){ pmVal=null; note='Dim ½AM'; }
+                  else if(dr.dimJF==='PM 1/2'){ amVal=null; note='Dim ½PM'; }
+                  else if(dr.dimJF==='PM fixe'){ note='Dim PM fixe'; }
+                } else {
+                  note='Sam'; // Samedi = même que semaine
+                }
+              }
+              if(dr.astr&&!isSun) note = 'Astr.';
+              const isRest = !amVal&&!pmVal;
+              const Slot = ({val,isAM})=> val
+                ? <div style={{display:'flex',alignItems:'center',gap:5,fontSize:11}}>
+                    <span style={{fontFamily:'var(--font-mono)',fontWeight:700,color:'var(--stroke)',fontSize:10}}>{val}</span>
+                    <span style={{fontSize:10,color:dr._color,fontWeight:600,whiteSpace:'nowrap'}}>
+                      {isAM ? LINE_DIR[dr._l]?.am : LINE_DIR[dr._l]?.pm}
+                    </span>
+                  </div>
+                : <span style={{fontSize:11,color:'var(--stroke2)',fontStyle:'italic'}}>Repos</span>;
+              return (
+                <div key={day} style={{display:'grid',gridTemplateColumns:'68px 1fr 1fr 90px',gap:6,
+                  padding:'7px 0',borderBottom:'1px dashed var(--stroke3)',alignItems:'center',
+                  background:isRest?'var(--paper)':isSun?'rgba(58,110,165,.03)':'transparent'}}>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:11,fontWeight:700,color:isRest?'var(--stroke2)':'var(--stroke)'}}>{day}</span>
+                  <Slot val={amVal} isAM/>
+                  <Slot val={pmVal} isAM={false}/>
+                  <span style={{textAlign:'right',fontSize:10,fontFamily:'var(--font-mono)',
+                    color:note==='Astr.'?'var(--warn)':isRest?'var(--stroke2)':'var(--stroke3)',
+                    fontWeight:note==='Astr.'?700:400}}>{note||''}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Historique des factures ── */}
+        <div style={{padding:'0 24px 24px'}}>
+          <div className="card" style={{padding:18}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+              <Eyebrow>Historique des factures · 6 dernières semaines</Eyebrow>
+              <Btn sm>Voir tout</Btn>
+            </div>
+            {(()=>{
+              const base = dr._l==='CHM'?720:1080;
+              const v = ((dr.code.charCodeAt(1)||5)-48+1); // deterministic variation 1-9
+              const rows=[
+                {sem:'S19',ref:`F2026-${150+sel}`,periode:'4–10 mai 2026',  montant:(base+v*30+60).toLocaleString('fr-FR')+',00',status:'brouillon'},
+                {sem:'S18',ref:`F2026-${140+sel}`,periode:'27 avr–3 mai',   montant:(base+v*25+20).toLocaleString('fr-FR')+',00',status:'validée'},
+                {sem:'S17',ref:`F2026-${130+sel}`,periode:'20–26 avr',      montant:(base+v*28+40).toLocaleString('fr-FR')+',00',status:'payée'},
+                {sem:'S16',ref:`F2026-${120+sel}`,periode:'13–19 avr',      montant:(base+v*20   ).toLocaleString('fr-FR')+',00',status:'payée'},
+                {sem:'S15',ref:`F2026-${110+sel}`,periode:'6–12 avr',       montant:(base+v*32+30).toLocaleString('fr-FR')+',00',status:'payée'},
+                {sem:'S14',ref:`F2026-${100+sel}`,periode:'30 mar–5 avr',   montant:(base+v*18+10).toLocaleString('fr-FR')+',00',status:'payée'},
+              ];
+              const stColor={brouillon:'var(--stroke2)',validée:'var(--info)',payée:'var(--success)','à vérifier':'var(--warn)'};
+              const stBg   ={brouillon:'var(--stroke4)',validée:'rgba(58,110,165,.1)',payée:'rgba(46,139,87,.1)','à vérifier':'rgba(232,165,35,.12)'};
+              return (<>
+                <div style={{display:'grid',gridTemplateColumns:'36px 1fr 110px 90px 80px',gap:8,paddingBottom:6,borderBottom:'1.5px solid var(--stroke3)',fontSize:9,fontFamily:'var(--font-mono)',letterSpacing:'.1em',textTransform:'uppercase',color:'var(--stroke2)'}}>
+                  <span>Sem.</span><span>Référence · Période</span><span style={{textAlign:'right'}}>Montant</span><span style={{textAlign:'center'}}>Statut</span><span/>
+                </div>
+                {rows.map(r=>(
+                  <div key={r.ref} style={{display:'grid',gridTemplateColumns:'36px 1fr 110px 90px 80px',gap:8,padding:'8px 0',borderBottom:'1px dashed var(--stroke3)',alignItems:'center'}}>
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,color:'var(--stroke2)'}}>{r.sem}</span>
+                    <div>
+                      <div style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700}}>{r.ref}</div>
+                      <div style={{fontSize:10,color:'var(--stroke2)',marginTop:1}}>{r.periode}</div>
+                    </div>
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:13,fontWeight:700,color:'var(--stroke)',textAlign:'right'}}>{r.montant} €</span>
+                    <span style={{textAlign:'center'}}>
+                      <span style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,letterSpacing:'.06em',padding:'2px 7px',borderRadius:4,
+                        color:stColor[r.status]||'var(--stroke2)',background:stBg[r.status]||'var(--stroke4)',whiteSpace:'nowrap'}}>
+                        {r.status}
+                      </span>
+                    </span>
+                    <div style={{display:'flex',justifyContent:'flex-end',gap:4}}>
+                      {r.status!=='brouillon'&&<Btn sm>Voir</Btn>}
+                      {r.status==='brouillon'&&<Btn sm accent>Valider</Btn>}
+                    </div>
+                  </div>
+                ))}
+              </>);
+            })()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 06 – Rapports
+const ViewReports = ({onCustom})=>{
+  const [clientIdx,setClientIdx] = useState(1);
+  const clients = [
+    {nom:'CADEMA — Ligne 3',sub:'Doujani ↔ Passot La Barge · 14 chauffeurs',n:618},
+    {nom:'CADEMA — Ligne 4',sub:'Vahibe ↔ PEM Passamainty · 14 chauffeurs',n:642},
+    {nom:'CHM Petite-Terre',sub:'CHM ↔ La Barge · 13 arrêts · 8 chauffeurs',n:284},
+  ];
+  const c = clients[clientIdx];
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <PageBar title="Rapports clients institutionnels" sub="Direction · Rapports"
+        actions={[{l:'Rapport sur mesure →',onClick:onCustom},{l:'Exporter PDF'},{l:'Excel',accent:true}]}/>
+      <div className="scroll" style={{padding:24,display:'grid',gridTemplateColumns:'300px 1fr',gap:20}}>
+        {/* Client list */}
+        <div className="card" style={{background:'#fff',padding:12,alignSelf:'start'}}>
+          <Eyebrow>Clients</Eyebrow>
+          {clients.map((cl,i)=>(
+            <div key={i} onClick={()=>setClientIdx(i)} style={{
+              padding:'12px 8px',borderBottom:'1px dashed var(--stroke3)',cursor:'pointer',
+              background:i===clientIdx?'var(--accent-soft)':'transparent',
+              borderLeft:i===clientIdx?'3px solid var(--brand)':'3px solid transparent',
+            }}>
+              <div style={{fontWeight:i===clientIdx?700:600,fontSize:13}}>{cl.nom}</div>
+              <div style={{fontSize:10,color:'var(--stroke2)'}}>{cl.sub}</div>
+              <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)',marginTop:4}}>{cl.n} trajets · mars 2026</div>
+            </div>
+          ))}
+        </div>
+        {/* Detail */}
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          <div className="card" style={{background:'#fff',padding:20}}>
+            <Eyebrow>{c.nom} · Mars 2026</Eyebrow>
+            <div style={{fontSize:22,fontWeight:700,marginTop:6}}>{STATS.trajets.ef} trajets · {STATS.voy.total.toLocaleString('fr-FR')} voyageurs · {STATS.trajets.taux} % réalisation</div>
+          </div>
+          <div style={{display:'grid',gap:12,gridTemplateColumns:'repeat(4,1fr)'}}>
+            <KpiCard label="Trajets théoriques" value={STATS.trajets.th} delta={`• ${STATS.trajets.non} non eff.`}/>
+            <KpiCard label="Ponctualité" value={`${STATS.retards.ponct} %`} delta={`${STATS.retards.plus10} retards >10 mn`}/>
+            <KpiCard label="Voy. moy / trajet" value={STATS.voy.parTj} delta="objectif 12,0"/>
+            <KpiCard label="Voy. moy / jour" value={STATS.voy.moy} delta="31 j"/>
+          </div>
+          <div className="card" style={{padding:20,background:'#fff'}}>
+            <Eyebrow>Détail par chauffeur</Eyebrow>
+            <table style={{marginTop:12}}>
+              <thead>
+                <tr>
+                  <th>Code</th><th>Chauffeur</th><th style={{textAlign:'center'}}>Trajets</th>
+                  <th style={{textAlign:'center'}}>Retards</th><th style={{textAlign:'right'}}>Voyageurs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {STATS.parCh.map((r,i)=>(
+                  <tr key={i}>
+                    <td style={{fontFamily:'var(--font-mono)',fontWeight:700}}>{r.code}</td>
+                    <td>{r.nom}</td>
+                    <td style={{fontFamily:'var(--font-mono)',fontWeight:700,textAlign:'center'}}>{r.trajets}</td>
+                    <td style={{fontFamily:'var(--font-mono)',textAlign:'center',color:r.retards>3?'var(--warn)':'inherit'}}>{r.retards}</td>
+                    <td style={{fontFamily:'var(--font-mono)',fontWeight:700,textAlign:'right'}}>{r.vy.toLocaleString('fr-FR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 07 – Audit Log
+const ViewAudit = ()=>(
+  <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <PageBar title="Audit log · planning" sub="Direction · 248 modifications · 30 derniers jours"
+      actions={[{l:'Exporter CSV'},{l:'Restaurer version'}]}/>
+    <div style={{padding:'10px 24px',borderBottom:'1px dashed var(--stroke3)',display:'flex',gap:8,alignItems:'center',background:'var(--paper)',flexShrink:0}}>
+      <Eyebrow>Filtrer</Eyebrow>
+      <Pill variant="active-dark">Tous (248)</Pill>
+      <Pill>Remplacements (42)</Pill>
+      <Pill>Ajouts (88)</Pill>
+      <Pill variant="incident">Annulations (24)</Pill>
+      <div style={{flex:1}}/>
+      <Pill>7 j</Pill><Pill variant="active-dark">30 j</Pill><Pill>Personnalisé</Pill>
+    </div>
+    <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+      {/* Timeline */}
+      <div className="scroll" style={{flex:1,padding:24}}>
+        {AUDIT.map((g,gi)=>(
+          <div key={gi} style={{marginBottom:28}}>
+            <Eyebrow>{g.day}</Eyebrow>
+            <div style={{marginTop:12,position:'relative',paddingLeft:20}}>
+              <div style={{position:'absolute',left:5,top:8,bottom:8,width:1,background:'var(--stroke3)'}}/>
+              {g.items.map((it,i)=>(
+                <div key={i} style={{position:'relative',paddingBottom:14}}>
+                  <div className="tl-dot" style={{background:kindColor[it.kind]||'var(--stroke)'}}/>
+                  <div className="card" style={{background:'#fff',padding:12}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:12,flexWrap:'wrap'}}>
+                      <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                        <span style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:12}}>{it.t}</span>
+                        <span style={{fontSize:13,fontWeight:700}}>{it.action}</span>
+                        <span style={{fontSize:12,color:'var(--stroke2)'}}>· {it.target}</span>
+                      </div>
+                      <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)'}}>{it.who}</span>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:6,flexWrap:'wrap',gap:6}}>
+                      {it.reason&&<div style={{fontSize:11,color:'var(--stroke2)'}}><span style={{fontFamily:'var(--font-mono)',textTransform:'uppercase',letterSpacing:'.1em',fontSize:9,marginRight:6}}>Raison</span>{it.reason}</div>}
+                      {it.notify&&<Pill variant="live" dot>{it.notify}</Pill>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Detail panel */}
+      <div style={{width:300,borderLeft:'1.5px solid var(--stroke)',overflow:'auto',background:'#fff',padding:18,flexShrink:0}}>
+        <Eyebrow>Détail · 11:42 — Remplacement</Eyebrow>
+        <div style={{fontSize:14,fontWeight:700,marginTop:6}}>D1 → D5 · 14:40 DOUJANI</div>
+        <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)',marginTop:2}}>par M. Aubin · IP 41.x.x.12</div>
+        <div className="card-soft" style={{padding:10,marginTop:16}}>
+          <Eyebrow>Avant</Eyebrow>
+          <div style={{fontSize:12,marginTop:4}}><b>D1</b> · MOHAMED Ali · 14:40-18:10</div>
+        </div>
+        <div style={{textAlign:'center',fontFamily:'var(--font-hand)',fontSize:20,color:'var(--brand)',margin:'4px 0'}}>↓</div>
+        <div className="card" style={{padding:10,background:'var(--accent-soft)',borderColor:'var(--brand)'}}>
+          <Eyebrow>Après</Eyebrow>
+          <div style={{fontSize:12,marginTop:4}}><b>D5</b> · AMINA Selemani · 14:40-18:10</div>
+        </div>
+        <div style={{marginTop:18}}>
+          <Eyebrow>Notifications envoyées</Eyebrow>
+          <ul style={{fontSize:11,color:'var(--stroke2)',paddingLeft:16,lineHeight:1.8,marginTop:6}}>
+            <li>FCM push → D5 · livré 11:42:04</li>
+            <li>FCM push → D1 · livré 11:42:04</li>
+            <li>Email CADEMA · envoyé 11:42:08</li>
+          </ul>
+        </div>
+        <Btn style={{width:'100%',marginTop:18,height:38}}>↶ Annuler ce changement</Btn>
+        <div style={{fontSize:10,color:'var(--stroke2)',textAlign:'center',marginTop:6}}>↳ jusqu'à 24 h après l'action</div>
+      </div>
+    </div>
+  </div>
+);
+
+// 08 – Nouvelle facture client (wizard 4 étapes)
+const ViewInvoiceCreate = ({onBack})=>{
+  const [step,setStep] = useState(1);
+  const steps = [
+    {n:1,l:'Client & période'},
+    {n:2,l:'Lignes (auto)'},
+    {n:3,l:'Ajustements'},
+    {n:4,l:'Émettre'},
+  ];
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <PageBar title="Nouvelle facture client" sub="Direction · Factures › Nouvelle"
+        actions={[
+          {l:'← Retour aux factures',onClick:onBack},
+          {l:'Enregistrer brouillon'},
+          {l:'Émettre la facture',accent:true,onClick:()=>setStep(4)},
+        ]}/>
+      {/* Stepper */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',borderBottom:'1.5px solid var(--stroke)',background:'var(--paper)',flexShrink:0}}>
+        {steps.map(({n,l},i)=>(
+          <div key={n} onClick={()=>setStep(n)} style={{
+            padding:'10px 14px',borderRight:i<3?'1px solid var(--stroke3)':'none',
+            background:n===step?'#fff':'transparent',cursor:'pointer',
+            display:'flex',alignItems:'center',gap:10,
+          }}>
+            <div className="step-num" style={{
+              background:n<step?'var(--brand)':n===step?'var(--stroke)':'#fff',
+              color:n<=step?'#fff':'var(--stroke2)',
+              borderColor:n<step?'var(--brand)':n===step?'var(--stroke)':'var(--stroke3)',
+            }}>{n<step?'✓':n}</div>
+            <div>
+              <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.14em',textTransform:'uppercase',color:'var(--stroke2)'}}>Étape {n}</div>
+              <div style={{fontSize:12,fontWeight:n===step?700:500}}>{l}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+        {/* Left – form */}
+        <div style={{flex:1,padding:20,overflow:'auto',background:'var(--paper)',display:'flex',flexDirection:'column',gap:14}}>
+          {/* Step 1 recap */}
+          <div className="card-soft" style={{padding:14}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <Eyebrow>Étape 1 · {step>1?'validée':'en cours'}</Eyebrow>
+                <div style={{fontSize:14,fontWeight:700,marginTop:4}}>CADEMA — Ligne 4 Caribus · Mars 2026</div>
+                <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)',marginTop:2}}>Contrat C-2024-04 · forfait 6,80 € / trajet · 642 prévus</div>
+              </div>
+              {step>1&&<Btn sm onClick={()=>setStep(1)}>← modifier</Btn>}
+            </div>
+            {step===1&&(
+              <div style={{marginTop:14,display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+                {[['Client','CADEMA'],['Ligne','L4 — Vahibe ↔ PEM Passamainty'],['Période','Mars 2026 (01/03 – 31/03)'],['Contrat','C-2024-04 · 6,80 € / trajet']].map(([l,v])=>(
+                  <div key={l}>
+                    <Eyebrow>{l}</Eyebrow>
+                    <div style={{marginTop:4,fontSize:13,fontWeight:600,padding:'8px 10px',border:'1.25px solid var(--stroke3)',borderRadius:6,background:'#fff'}}>{v}</div>
+                  </div>
+                ))}
+                <Btn accent style={{gridColumn:'span 2'}} onClick={()=>setStep(2)}>Suivant → Générer les lignes</Btn>
+              </div>
+            )}
+          </div>
+          {/* Step 2 – auto-lines */}
+          {step>=2&&(
+            <div className="card" style={{background:'#fff'}}>
+              <div style={{padding:'10px 14px',borderBottom:'1.5px solid var(--stroke)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <Eyebrow>Lignes calculées · depuis Planning + Replay GPS</Eyebrow>
+                <div style={{display:'flex',gap:6}}>
+                  <Btn sm>↻ Recalculer</Btn>
+                  <Btn sm>+ Ligne manuelle</Btn>
+                </div>
+              </div>
+              {[
+                ['Trajets effectués L4','618 trajets','6,80 €','4 202,40 €','auto · Planning + GPS'],
+                ['Voyageurs transportés','8 412 vy','—','—','auto · Replay GPS'],
+                ['Pénalité ponctualité (>10 mn × 18)','18 × 22 €','−22,00 €','−396,00 €','auto · Contrat §4.2'],
+                ['Course supplémentaire CADEMA-EXT','4 trajets','8,50 €','34,00 €','auto · Demandes ad hoc'],
+              ].map(([l,q,p,t,src],i,arr)=>(
+                <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 90px 80px 120px 32px',alignItems:'center',gap:10,padding:'10px 14px',borderBottom:i<arr.length-1?'1px dashed var(--stroke3)':'none'}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600}}>{l}</div>
+                    <div style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--stroke2)',marginTop:2}}>↳ {src}</div>
+                  </div>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:11}}>{q}</div>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:11}}>{p}</div>
+                  <div style={{fontFamily:'var(--font-mono)',fontWeight:700,textAlign:'right'}}>{t}</div>
+                  <Btn sm>✎</Btn>
+                </div>
+              ))}
+              <div style={{padding:'12px 14px',background:'var(--paper)',display:'flex',justifyContent:'space-between',borderTop:'1.5px solid var(--stroke)'}}>
+                <div style={{fontSize:11,color:'var(--stroke2)'}}>HT · TVA non applicable, art. 293 B CGI</div>
+                <div style={{display:'flex',gap:18,alignItems:'baseline'}}>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--stroke2)'}}>Total HT</span>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:24,fontWeight:800}}>3 840,40 €</span>
+                </div>
+              </div>
+              {step===2&&<div style={{padding:'12px 14px',borderTop:'1px dashed var(--stroke3)'}}>
+                <Btn accent onClick={()=>setStep(3)}>Suivant → Ajustements</Btn>
+              </div>}
+            </div>
+          )}
+          {/* Step 3 – adjustments */}
+          {step>=3&&(
+            <div className="card" style={{background:'#fff',padding:16}}>
+              <Eyebrow>Ajustements & note client</Eyebrow>
+              <div style={{marginTop:10,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                {[['Remise commerciale','0,00 €'],['Frais de gestion','0,00 €']].map(([l,v])=>(
+                  <div key={l}>
+                    <Eyebrow>{l}</Eyebrow>
+                    <div style={{marginTop:4,padding:'8px 10px',border:'1.25px dashed var(--stroke3)',borderRadius:6,fontSize:13,fontFamily:'var(--font-mono)'}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{marginTop:12}}>
+                <Eyebrow>Note client (optionnelle)</Eyebrow>
+                <div style={{marginTop:4,padding:'10px 12px',border:'1.25px dashed var(--stroke3)',borderRadius:6,fontSize:12,color:'var(--stroke2)',minHeight:52}}>Mois clôturé au 31/03/2026 · 96,3 % de réalisation · merci à toute l'équipe CADEMA.</div>
+              </div>
+              {step===3&&<Btn accent style={{marginTop:12}} onClick={()=>setStep(4)}>Suivant → Émettre</Btn>}
+            </div>
+          )}
+          {/* Step 4 – emit */}
+          {step===4&&(
+            <div className="card" style={{background:'#fff',padding:16}}>
+              <Eyebrow>Confirmer l'émission</Eyebrow>
+              <div style={{marginTop:8,fontSize:13,color:'var(--stroke2)'}}>La facture <b>F-2026-0114</b> sera envoyée à <b>comptabilite@cadema.yt</b> et archivée dans <b>/factures/2026/04/</b>.</div>
+              <div style={{display:'flex',gap:8,marginTop:14}}>
+                <Btn sm onClick={()=>setStep(3)}>← Modifier</Btn>
+                <Btn sm accent>Émettre &amp; envoyer →</Btn>
+              </div>
+            </div>
+          )}
+        </div>
+        {/* Right – PDF preview */}
+        <div style={{width:360,borderLeft:'1.5px solid var(--stroke)',background:'var(--paper)',overflow:'auto',padding:18,flexShrink:0}}>
+          <Eyebrow>Aperçu PDF · A4</Eyebrow>
+          <div style={{marginTop:8,background:'#fff',border:'1.5px solid var(--stroke)',padding:18,fontSize:11,lineHeight:1.6}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+              <div>
+                <div style={{fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'.14em'}}>TAXI VANILLE</div>
+                <div style={{fontSize:9,color:'var(--stroke2)'}}>Mamoudzou · Mayotte</div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div style={{fontWeight:700}}>FACTURE</div>
+                <div style={{fontFamily:'var(--font-mono)',fontSize:10}}>F-2026-0114 · 03/04/2026</div>
+              </div>
+            </div>
+            <div style={{height:10}}/>
+            <div style={{fontSize:10}}>Client · <b>CADEMA</b><br/>Place Mariage · 97600 Mamoudzou</div>
+            <div style={{height:12}}/>
+            <div style={{borderTop:'1px solid #000',borderBottom:'1px solid #000'}}>
+              {[['Trajets L4','618 × 6,80','4 202,40 €'],['Voyageurs','8 412','—'],['Pénalité ponctualité','18 × 22','−396,00 €'],['Suppl. CADEMA-EXT','4 × 8,50','34,00 €']].map(([l,q,t],i)=>(
+                <div key={i} style={{display:'grid',gridTemplateColumns:'1.4fr 1fr 0.9fr',padding:'4px 0',fontSize:9,borderTop:i?'1px dotted var(--stroke3)':'none'}}>
+                  <span>{l}</span><span style={{fontFamily:'var(--font-mono)'}}>{q}</span><span style={{fontFamily:'var(--font-mono)',textAlign:'right'}}>{t}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontWeight:700}}>
+              <span>Total HT</span><span style={{fontFamily:'var(--font-mono)'}}>3 840,40 €</span>
+            </div>
+            <div style={{fontSize:8,color:'var(--stroke2)',marginTop:14}}>Règlement à 30 j · IBAN FR76 …</div>
+          </div>
+          <div style={{marginTop:12,fontSize:11,color:'var(--stroke2)',display:'flex',flexDirection:'column',gap:4}}>
+            <span>↳ Auto-numérotée · F-2026-0114</span>
+            <span>↳ Envoi à comptabilite@cadema.yt</span>
+            <span>↳ Archivée /factures/2026/04/</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 09 – Rapport sur mesure (croiseur multi-sources)
+const ViewCustomReport = ({onBack})=>{
+  const [activeSources,setActiveSources] = useState(['Courses','Chauffeurs','Clients']);
+  const [groupBy,setGroupBy] = useState('Ligne');
+  const [period,setPeriod] = useState('Mars 2026');
+  const sources = [
+    {label:'Courses',    fields:['Date','Ligne','Statut','Voyageurs','Durée'],    color:'var(--brand)'},
+    {label:'Chauffeurs', fields:['Code','Nom','Ligne habituelle','Ancienneté'],   color:'var(--info)'},
+    {label:'Clients',    fields:['Nom','Contrat','Tarif / trajet'],               color:'var(--success)'},
+    {label:'Factures',   fields:['N°','Statut','Montant HT'],                     color:'var(--warn)'},
+    {label:'Incidents',  fields:['Date','Type','Cause','Résolution'],             color:'var(--danger)'},
+    {label:'GPS / Replay',fields:['Distance','Vitesse moy.','Arrêts'],           color:'var(--stroke2)'},
+  ];
+  const toggle = s=>setActiveSources(a=>a.includes(s)?a.filter(x=>x!==s):[...a,s]);
+  const preview = [
+    {ligne:'L3',chauffeur:'D1 · MOHAMED Ali',trajets:84,voyageurs:1148,retards:2,ca:'4 202 €'},
+    {ligne:'L3',chauffeur:'D5 · AMINA Selemani',trajets:80,voyageurs:1090,retards:1,ca:'3 996 €'},
+    {ligne:'L4',chauffeur:'C1 · EL ANZIZE Hamada',trajets:84,voyageurs:1148,retards:2,ca:'4 202 €'},
+    {ligne:'L4',chauffeur:'C14 · KAMARDINE Mansour',trajets:81,voyageurs:1102,retards:3,ca:'4 050 €'},
+    {ligne:'L4',chauffeur:'C8 · HADHURAMI Makinedine',trajets:78,voyageurs:1056,retards:4,ca:'3 904 €'},
+  ];
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <PageBar title="Rapport sur mesure" sub="Direction · Rapports › Rapport sur mesure"
+        actions={[
+          {l:'← Retour aux rapports',onClick:onBack},
+          {l:'Exporter Excel'},
+          {l:'Exporter PDF',accent:true},
+        ]}/>
+      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+        {/* Left panel – builder */}
+        <div style={{width:280,borderRight:'1.5px solid var(--stroke)',overflow:'auto',background:'var(--paper)',padding:16,flexShrink:0,display:'flex',flexDirection:'column',gap:18}}>
+          {/* Sources */}
+          <div>
+            <Eyebrow>Sources de données</Eyebrow>
+            <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:6}}>
+              {sources.map(({label,fields,color})=>{
+                const on = activeSources.includes(label);
+                return (
+                  <div key={label} onClick={()=>toggle(label)} style={{
+                    padding:'8px 10px',border:`1.5px solid ${on?color:'var(--stroke3)'}`,borderRadius:6,
+                    background:on?'#fff':'transparent',cursor:'pointer',transition:'all .12s',
+                  }}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <div style={{width:8,height:8,borderRadius:'50%',background:on?color:'var(--stroke3)',flexShrink:0}}/>
+                      <span style={{fontSize:12,fontWeight:on?700:500,color:on?'var(--stroke)':'var(--stroke2)'}}>{label}</span>
+                      <span style={{marginLeft:'auto',fontFamily:'var(--font-mono)',fontSize:9,color:'var(--stroke2)'}}>{on?'✓':''}</span>
+                    </div>
+                    {on&&<div style={{marginTop:4,fontSize:10,color:'var(--stroke2)',paddingLeft:16}}>{fields.join(' · ')}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* Group by */}
+          <div>
+            <Eyebrow>Regrouper par</Eyebrow>
+            <div style={{marginTop:8,display:'flex',flexWrap:'wrap',gap:6}}>
+              {['Ligne','Chauffeur','Semaine','Mois','Client'].map(g=>(
+                <span key={g} onClick={()=>setGroupBy(g)}
+                  className={`pill${g===groupBy?' active-brand':''}`}
+                  style={{cursor:'pointer'}}>{g}</span>
+              ))}
+            </div>
+          </div>
+          {/* Period */}
+          <div>
+            <Eyebrow>Période</Eyebrow>
+            <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:6}}>
+              {['Mars 2026','S19 (5–11 mai)','Personnalisée…'].map(p=>(
+                <div key={p} onClick={()=>setPeriod(p)} style={{
+                  padding:'7px 10px',border:`1.25px solid ${p===period?'var(--stroke)':'var(--stroke3)'}`,borderRadius:6,
+                  fontSize:12,fontWeight:p===period?700:400,cursor:'pointer',background:p===period?'var(--stroke)':undefined,color:p===period?'#fff':'var(--stroke)',
+                }}>{p}</div>
+              ))}
+            </div>
+          </div>
+          {/* Saved templates */}
+          <div>
+            <Eyebrow>Modèles enregistrés</Eyebrow>
+            <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:6}}>
+              {[['Mensuel CADEMA','Date, Chauffeur · Σ Vy',true],['Hebdo CDM','Jour, Ligne · # Trajets'],['Incidents 30 j','Type, Cause · #']].map(([n,s,active],i)=>(
+                <div key={i} style={{padding:'8px 10px',border:`1.25px ${active?'solid':'dashed'} ${active?'var(--brand)':'var(--stroke3)'}`,borderRadius:6,cursor:'pointer',background:active?'#fff':undefined}}>
+                  <div style={{fontSize:11,fontWeight:active?700:500}}>{n}</div>
+                  <div style={{fontSize:9,fontFamily:'var(--font-mono)',color:'var(--stroke2)',marginTop:2}}>{s}</div>
+                </div>
+              ))}
+              <Btn sm style={{width:'100%'}}>+ Enregistrer ce modèle</Btn>
+            </div>
+          </div>
+        </div>
+        {/* Right – live preview table */}
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          {/* Toolbar */}
+          <div style={{padding:'10px 18px',borderBottom:'1px dashed var(--stroke3)',background:'#fff',flexShrink:0,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+            <Eyebrow>Aperçu · {period} · regroupé par {groupBy} · {preview.length} lignes</Eyebrow>
+            <div style={{flex:1}}/>
+            <Pill variant="active-dark">{activeSources.length} sources actives</Pill>
+            <Pill>{activeSources.join(', ')}</Pill>
+          </div>
+          {/* Table */}
+          <div className="scroll" style={{flex:1,padding:'0 0 24px'}}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Ligne</th>
+                  <th>Chauffeur</th>
+                  {activeSources.includes('Courses')&&<th style={{textAlign:'right'}}>Trajets</th>}
+                  {activeSources.includes('Courses')&&<th style={{textAlign:'right'}}>Voyageurs</th>}
+                  {activeSources.includes('Courses')&&<th style={{textAlign:'right'}}>Retards</th>}
+                  {activeSources.includes('Factures')&&<th style={{textAlign:'right'}}>CA</th>}
+                  <th style={{textAlign:'right'}}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.map((r,i)=>(
+                  <tr key={i}>
+                    <td><span style={{fontFamily:'var(--font-mono)',fontWeight:700,color:'var(--brand)'}}>{r.ligne}</span></td>
+                    <td style={{fontWeight:600}}>{r.chauffeur}</td>
+                    {activeSources.includes('Courses')&&<td style={{fontFamily:'var(--font-mono)',textAlign:'right',fontWeight:700}}>{r.trajets}</td>}
+                    {activeSources.includes('Courses')&&<td style={{fontFamily:'var(--font-mono)',textAlign:'right'}}>{r.voyageurs.toLocaleString('fr-FR')}</td>}
+                    {activeSources.includes('Courses')&&<td style={{fontFamily:'var(--font-mono)',textAlign:'right',color:r.retards>3?'var(--danger)':'inherit'}}>{r.retards}</td>}
+                    {activeSources.includes('Factures')&&<td style={{fontFamily:'var(--font-mono)',textAlign:'right',fontWeight:700}}>{r.ca}</td>}
+                    <td style={{textAlign:'right'}}><Btn sm>Détail</Btn></td>
+                  </tr>
+                ))}
+                <tr style={{background:'var(--paper)',borderTop:'1.5px solid var(--stroke)'}}>
+                  <td colSpan={2} style={{fontWeight:700}}>Total</td>
+                  {activeSources.includes('Courses')&&<td style={{fontFamily:'var(--font-mono)',textAlign:'right',fontWeight:700}}>407</td>}
+                  {activeSources.includes('Courses')&&<td style={{fontFamily:'var(--font-mono)',textAlign:'right',fontWeight:700}}>5 544</td>}
+                  {activeSources.includes('Courses')&&<td style={{fontFamily:'var(--font-mono)',textAlign:'right',fontWeight:700}}>12</td>}
+                  {activeSources.includes('Factures')&&<td style={{fontFamily:'var(--font-mono)',textAlign:'right',fontWeight:700}}>20 354 €</td>}
+                  <td/>
+                </tr>
+              </tbody>
+            </table>
+            {/* Chart strip */}
+            <div style={{padding:'20px 18px',borderTop:'1px dashed var(--stroke3)',marginTop:8}}>
+              <Eyebrow>Voyageurs par chauffeur · {period}</Eyebrow>
+              <div style={{marginTop:12,display:'flex',gap:10,alignItems:'flex-end',height:80}}>
+                {preview.map((r,i)=>{
+                  const pct = r.voyageurs/1200*100;
+                  return (
+                    <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                      <div style={{width:'100%',height:`${pct}%`,minHeight:4,background:i<2?'var(--brand)':'var(--info)',borderRadius:'3px 3px 0 0'}}/>
+                      <div style={{fontFamily:'var(--font-mono)',fontSize:8,textAlign:'center',color:'var(--stroke2)'}}>{r.chauffeur.split(' ')[0]}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 08 – Remplacements
+const ViewReplacement = ({onNewReplace})=>{
+  const [filterRaison,setFilterRaison] = useState('Tous');
+  const [filterLigne,setFilterLigne] = useState('Tous');
+  const raisons = ['Tous','Panne véhicule','Absence chauffeur','Congé maladie','Météo','Autre'];
+  const lignes  = ['Tous','L3','L4'];
+  const history = [
+    {id:'RPL-042',date:'Ven 8 mai · 11:42',remplacant:'D5 · AMINA Selemani',remplace:'D1 · MOHAMED Ali',course:'14:40 DOUJANI → Passot Barge',raison:'Panne véhicule',ligne:'L3',delai:'6 mn',statut:'confirmé',notify:'FCM D5 + D1 + CADEMA'},
+    {id:'RPL-041',date:'Jeu 7 mai · 11:55',remplacant:'D14 · AHAMADI Laydine',remplace:'D12 · VELOU M\'Berou',course:'14:00 PASSOT → DOUJANI',raison:'Congé maladie',ligne:'L3',delai:'9 mn',statut:'confirmé',notify:'FCM D14'},
+    {id:'RPL-040',date:'Mar 5 mai · 08:30',remplacant:'C14 · MANSOUR Kamardine',remplace:'C5 · AHAMADI Raenmouddine',course:'9:30 VAHIBE → Passamainty',raison:'Absence chauffeur',ligne:'L4',delai:'12 mn',statut:'confirmé',notify:'FCM C14 + CADEMA'},
+    {id:'RPL-039',date:'Lun 4 mai · 07:10',remplacant:'D7 · COMBO Said',remplace:'D13 · MOURIDI Aktoir',course:'7:30 DOUJANI → PASSOT',raison:'Panne véhicule',ligne:'L3',delai:'4 mn',statut:'confirmé',notify:'FCM D7 + D13'},
+    {id:'RPL-038',date:'Ven 1 mai · 14:22',remplacant:'C8 · HADHURAMI Makinedine',remplace:'C1 · EL ANZIZE Hamada',course:'15:00 Passamainty → VAHIBE',raison:'Météo',ligne:'L4',delai:'18 mn',statut:'annulé',notify:'—'},
+    {id:'RPL-037',date:'Jeu 30 avr · 09:05',remplacant:'D5 · AMINA Selemani',remplace:'D7 · COMBO Said',course:'9:00 PASSOT → DOUJANI',raison:'Autre',ligne:'L3',delai:'7 mn',statut:'confirmé',notify:'FCM D5'},
+  ];
+  const filtered = history.filter(r=>{
+    if(filterRaison!=='Tous'&&r.raison!==filterRaison) return false;
+    if(filterLigne!=='Tous'&&r.ligne!==filterLigne) return false;
+    return true;
+  });
+  const confirmed = filtered.filter(r=>r.statut==='confirmé').length;
+  const avgDelay = Math.round(filtered.filter(r=>r.statut==='confirmé').reduce((a,r)=>a+parseInt(r.delai),0)/Math.max(confirmed,1));
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <PageBar title="Gestion des remplacements" sub={`Direction · ${history.length} opérations · 30 derniers jours`}
+        actions={[{l:'Exporter CSV'},{l:'⇄ Nouveau remplacement',accent:true,onClick:onNewReplace}]}/>
+      {/* KPI strip */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,padding:'14px 24px',borderBottom:'1.5px solid var(--stroke)',background:'var(--paper)',flexShrink:0}}>
+        <KpiCard label="Remplacements · 30 j" value={history.length} delta="↑ 3 vs mois préc."/>
+        <KpiCard label="Confirmés" value={confirmed} delta={`${Math.round(confirmed/history.length*100)} % de taux de couverture`}/>
+        <KpiCard label="Délai moyen" value={`${avgDelay} mn`} delta="de la demande à la confirmation"/>
+        <KpiCard label="Cause #1" value="Panne véhicule" delta={`${history.filter(r=>r.raison==='Panne véhicule').length} cas sur ${history.length}`} danger/>
+      </div>
+      {/* Filtres */}
+      <div style={{padding:'10px 24px',borderBottom:'1px dashed var(--stroke3)',display:'flex',gap:8,alignItems:'center',background:'#fff',flexShrink:0,flexWrap:'wrap'}}>
+        <Eyebrow>Raison</Eyebrow>
+        {raisons.map(r=><span key={r} onClick={()=>setFilterRaison(r)}
+          style={{cursor:'pointer'}}><Pill variant={filterRaison===r?'active-dark':''}>{r}</Pill></span>)}
+        <div style={{width:1,height:20,background:'var(--stroke3)',margin:'0 6px'}}/>
+        <Eyebrow>Ligne</Eyebrow>
+        {lignes.map(l=><span key={l} onClick={()=>setFilterLigne(l)}
+          style={{cursor:'pointer'}}><Pill variant={filterLigne===l?'active-dark':''}>{l}</Pill></span>)}
+        <span style={{marginLeft:'auto',fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)'}}>{filtered.length} résultat{filtered.length>1?'s':''}</span>
+      </div>
+      {/* Table */}
+      <div className="scroll" style={{flex:1}}>
+        <table>
+          <thead>
+            <tr>
+              <th style={{width:90}}>Réf.</th>
+              <th>Date · heure</th>
+              <th>Remplacé</th>
+              <th>Remplaçant</th>
+              <th>Course</th>
+              <th>Raison</th>
+              <th style={{textAlign:'center'}}>Ligne</th>
+              <th style={{textAlign:'center'}}>Délai</th>
+              <th style={{textAlign:'center'}}>Statut</th>
+              <th>Notifications</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((r,i)=>(
+              <tr key={i} style={{background:i===0?'var(--accent-soft)':'transparent'}}>
+                <td style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:11}}>{r.id}</td>
+                <td style={{fontSize:11,color:'var(--stroke2)',whiteSpace:'nowrap'}}>{r.date}</td>
+                <td style={{fontSize:12}}>{r.remplace}</td>
+                <td style={{fontSize:12,fontWeight:600}}>{r.remplacant}</td>
+                <td style={{fontSize:11,color:'var(--stroke2)'}}>{r.course}</td>
+                <td style={{fontSize:11}}>
+                  <span style={{display:'inline-flex',alignItems:'center',gap:4}}>
+                    <span style={{width:6,height:6,borderRadius:'50%',background:r.raison==='Panne véhicule'?'var(--danger)':r.raison==='Absence chauffeur'?'var(--warn)':r.raison==='Congé maladie'?'var(--info)':'var(--stroke3)',flexShrink:0}}/>
+                    {r.raison}
+                  </span>
+                </td>
+                <td style={{textAlign:'center'}}>
+                  <Pill variant={r.ligne==='L3'?'active-brand':''} dot={r.ligne==='L4'}>{r.ligne}</Pill>
+                </td>
+                <td style={{fontFamily:'var(--font-mono)',fontWeight:700,textAlign:'center',color:parseInt(r.delai)>15?'var(--warn)':'var(--success)'}}>{r.delai}</td>
+                <td style={{textAlign:'center'}}>
+                  <Pill variant={r.statut==='confirmé'?'live':'incident'} dot>{r.statut}</Pill>
+                </td>
+                <td style={{fontSize:10,color:'var(--stroke2)',fontFamily:'var(--font-mono)'}}>{r.notify}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length===0&&(
+          <div style={{padding:'48px 24px',textAlign:'center',color:'var(--stroke2)',fontSize:13}}>
+            Aucun remplacement pour ces filtres.
+          </div>
+        )}
+        {/* Analyse causes */}
+        <div style={{margin:'0 24px 24px',marginTop:24,display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+          <div className="card" style={{padding:18}}>
+            <Eyebrow>Répartition des causes · 30 j</Eyebrow>
+            <div style={{marginTop:14,display:'flex',flexDirection:'column',gap:10}}>
+              {[['Panne véhicule',16,'var(--danger)'],['Absence chauffeur',10,'var(--warn)'],['Congé maladie',8,'var(--info)'],['Météo',4,'var(--stroke2)'],['Autre',4,'var(--stroke3)']].map(([l,n,c])=>(
+                <div key={l} style={{display:'grid',gridTemplateColumns:'1fr 120px 28px',gap:8,alignItems:'center',fontSize:12}}>
+                  <span>{l}</span>
+                  <div style={{height:8,background:'var(--stroke4)',borderRadius:2,position:'relative'}}>
+                    <div style={{position:'absolute',inset:0,width:`${(n/16)*100}%`,background:c,borderRadius:2}}/>
+                  </div>
+                  <span style={{fontFamily:'var(--font-mono)',fontWeight:700,textAlign:'right'}}>{n}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="card" style={{padding:18}}>
+            <Eyebrow>Chauffeurs remplaçants les + sollicités</Eyebrow>
+            <div style={{marginTop:14,display:'flex',flexDirection:'column',gap:10}}>
+              {[['D5 · AMINA Selemani','L3',8],['D14 · AHAMADI Laydine','L3',6],['C14 · MANSOUR Kamardine','L4',5],['D7 · COMBO Said','L3',4],['C8 · HADHURAMI Makinedine','L4',3]].map(([n,l,v])=>(
+                <div key={n} style={{display:'grid',gridTemplateColumns:'1fr 40px 28px',gap:8,alignItems:'center',fontSize:12}}>
+                  <span>{n}</span>
+                  <Pill variant={l==='L3'?'active-brand':''}>{l}</Pill>
+                  <span style={{fontFamily:'var(--font-mono)',fontWeight:700,textAlign:'right'}}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 09 – Paramétrage
+const ViewParametrage = ()=>{
+  const [section,setSection] = useState('entreprise');
+  const [editMode,setEditMode] = useState(false);
+  const sections = [
+    {id:'entreprise',label:'Entreprise',icon:'🏢'},
+    {id:'lignes',label:'Lignes & routes',icon:'🛣'},
+    {id:'chauffeurs',label:'Chauffeurs',icon:'👤'},
+    {id:'planning',label:'Planning',icon:'📅'},
+    {id:'tarification',label:'Tarification',icon:'💶'},
+    {id:'alertes',label:'Alertes & seuils',icon:'⚠'},
+    {id:'notifications',label:'Notifications',icon:'🔔'},
+    {id:'utilisateurs',label:'Utilisateurs & rôles',icon:'🔐'},
+  ];
+  const Field = ({label,value,half,mono})=>(
+    <div style={{display:'flex',flexDirection:'column',gap:4,gridColumn:half?'span 1':'span 2'}}>
+      <label style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.14em',textTransform:'uppercase',color:'var(--stroke2)'}}>{label}</label>
+      {editMode
+        ? <input defaultValue={value} style={{border:'1.25px solid var(--stroke3)',borderRadius:4,padding:'6px 10px',fontSize:13,fontFamily:mono?'var(--font-mono)':'var(--font-sans)',width:'100%'}}/>
+        : <div style={{padding:'7px 10px',border:'1.25px solid var(--stroke4)',borderRadius:4,fontSize:13,fontFamily:mono?'var(--font-mono)':'var(--font-sans)',background:'var(--paper)',color:'var(--stroke)'}}>{value}</div>
+      }
+    </div>
+  );
+  const Toggle = ({label,desc,on})=>(
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:'1px dashed var(--stroke3)'}}>
+      <div>
+        <div style={{fontSize:13,fontWeight:600}}>{label}</div>
+        {desc&&<div style={{fontSize:11,color:'var(--stroke2)',marginTop:2}}>{desc}</div>}
+      </div>
+      <div style={{width:38,height:22,borderRadius:999,background:on?'var(--brand)':'var(--stroke3)',position:'relative',cursor:editMode?'pointer':'default',flexShrink:0}}>
+        <div style={{position:'absolute',top:3,left:on?18:3,width:16,height:16,borderRadius:'50%',background:'#fff',transition:'left .15s'}}/>
+      </div>
+    </div>
+  );
+  const SectionCard = ({title,children})=>(
+    <div className="card" style={{padding:20,background:'#fff',display:'flex',flexDirection:'column',gap:16}}>
+      <Eyebrow>{title}</Eyebrow>
+      {children}
+    </div>
+  );
+  const Grid = ({children})=>(
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>{children}</div>
+  );
+
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <PageBar title="Paramétrage" sub="Direction · Configuration système"
+        actions={editMode
+          ? [{l:'Annuler',onClick:()=>setEditMode(false)},{l:'✓ Enregistrer',accent:true,onClick:()=>setEditMode(false)}]
+          : [{l:'✎ Modifier',accent:true,onClick:()=>setEditMode(true)}]}/>
+      {editMode&&(
+        <div style={{padding:'8px 24px',background:'rgba(242,100,25,0.08)',borderBottom:'2px solid var(--brand)',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+          <span style={{width:8,height:8,borderRadius:'50%',background:'var(--brand)',animation:'pulse-ring 1.4s infinite'}}/>
+          <span style={{fontSize:12,fontWeight:600,color:'var(--brand)'}}>Mode édition actif</span>
+          <span style={{fontSize:12,color:'var(--stroke2)'}}>— modifiez les champs puis cliquez Enregistrer</span>
+        </div>
+      )}
+      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
+        {/* Left nav */}
+        <div style={{width:200,borderRight:'1.5px solid var(--stroke)',display:'flex',flexDirection:'column',flexShrink:0,background:'var(--paper)',padding:'10px 8px',gap:2,overflowY:'auto'}}>
+          {sections.map(s=>(
+            <div key={s.id} onClick={()=>setSection(s.id)} style={{
+              display:'flex',alignItems:'center',gap:10,padding:'9px 10px',borderRadius:6,fontSize:12,fontWeight:500,cursor:'pointer',
+              background:section===s.id?'var(--stroke)':'transparent',
+              color:section===s.id?'#fff':'var(--stroke2)',
+            }}>
+              <span>{s.icon}</span>{s.label}
+            </div>
+          ))}
+        </div>
+        {/* Content */}
+        <div className="scroll" style={{flex:1,padding:24,display:'flex',flexDirection:'column',gap:16}}>
+
+          {section==='entreprise'&&(<>
+            <SectionCard title="Identité de l'entreprise">
+              <Grid>
+                <Field label="Raison sociale" value="SAS Taxi Vanille" half/>
+                <Field label="Numéro SIRET" value="842 317 491 00018" half mono/>
+                <Field label="Forme juridique" value="Société par Actions Simplifiée (SAS)" half/>
+                <Field label="Capital social" value="10 000 €" half mono/>
+                <Field label="Adresse siège" value="12 rue du Lagon, Mamoudzou, Mayotte 97600"/>
+                <Field label="Téléphone" value="+262 639 40 35 35" half mono/>
+                <Field label="Email" value="contact@taxivanille.yt" half mono/>
+                <Field label="Site web" value="www.taxivanille.yt" half mono/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Responsable direction">
+              <Grid>
+                <Field label="Nom prénom" value="M. Aubin" half/>
+                <Field label="Rôle" value="Directeur d'exploitation" half/>
+                <Field label="Téléphone direct" value="+262 639 12 34 56" half mono/>
+                <Field label="Email professionnel" value="aubin@taxivanille.yt" half mono/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Données bancaires (facturation)">
+              <Grid>
+                <Field label="IBAN" value="FR76 1234 5678 9012 3456 7890 123" half mono/>
+                <Field label="BIC" value="BFCOYTYTXXX" half mono/>
+                <Field label="Banque" value="Banque des Comores · Agence Mamoudzou" half/>
+                <Field label="Titulaire" value="SAS Taxi Vanille" half/>
+              </Grid>
+            </SectionCard>
+          </>)}
+
+          {section==='lignes'&&(<>
+            <SectionCard title="Ligne 3 — Doujani ↔ Passot Barge">
+              <Grid>
+                <Field label="Identifiant client" value="CADEMA — Ligne 3" half/>
+                <Field label="Type de marché" value="Appel d'Offres (AO)" half/>
+                <Field label="Terminus A" value="DOUJANI" half/>
+                <Field label="Terminus B" value="PASSOT LA BARGE" half/>
+                <Field label="Arrêts intermédiaires" value="M'Tsapéré · Tsoundzou · Cavani · Passamainty"/>
+                <Field label="Nb chauffeurs actifs" value="14 (D1 → D14)" half mono/>
+                <Field label="Exemples plaques" value="GR-558-LA · GX-284-BV · GB-965-EQ · WW-620-KR" half mono/>
+                <Field label="Coord. matin semaine" value="HAMADA Younoussa · 06 38 65 30 02" half/>
+                <Field label="Coord. PM semaine" value="KAMARDINE Mansour · 06 39 21 15 43" half/>
+                <Field label="Coord. sam/dim matin" value="OUSSENI Soula · 06 39 69 03 87" half/>
+                <Field label="Coord. sam/dim PM" value="KAMARDINE Mansour · 06 39 21 15 43" half/>
+                <Field label="Début de service" value="05:00" half mono/>
+                <Field label="Fin de service" value="21:10" half mono/>
+                <Field label="CA mensuel estimé" value="38 240 €" half mono/>
+                <Field label="Modalité facturation" value="Journée / Trajet selon chauffeur" half/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Ligne 4 — Vahibe ↔ Passamainty (via PEM)">
+              <Grid>
+                <Field label="Identifiant client" value="CADEMA — Ligne 4" half/>
+                <Field label="Type de marché" value="Appel d'Offres (AO)" half/>
+                <Field label="Terminus A" value="VAHIBE / VAHIBE 2" half/>
+                <Field label="Terminus B" value="PEM PASSAMAINTY" half/>
+                <Field label="Arrêts intermédiaires" value="Kawéni · Mamoudzou centre · PEM"/>
+                <Field label="Nb chauffeurs actifs" value="14 (C1 → C14)" half mono/>
+                <Field label="Exemples plaques" value="GM-515-YL · WW-654-KR · FZ-411-ZD · WW-629-KR" half mono/>
+                <Field label="Coord. matin semaine" value="ALLAOUI Soibrane · 06 39 65 31 82" half/>
+                <Field label="Coord. PM semaine" value="EL ANZIZE Hamada · 06 39 22 81 28" half/>
+                <Field label="Coord. sam/dim matin" value="TOUMBOU Toibourani · 06 39 19 14 22" half/>
+                <Field label="Coord. sam/dim PM" value="EL ANZIZE Hamada · 06 39 22 81 28" half/>
+                <Field label="Début de service" value="04:30" half mono/>
+                <Field label="Fin de service" value="21:15" half mono/>
+                <Field label="CA mensuel estimé" value="24 000 €" half mono/>
+                <Field label="Modalité facturation" value="Journée / Trajet selon chauffeur" half/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="CHM — La Barge ↔ CHM Mamoudzou (13 arrêts + Direct + Direct+CRA)">
+              <Grid>
+                <Field label="Identifiant client" value="CHM Petite-Terre" half/>
+                <Field label="Type de marché" value="Marché public" half/>
+                <Field label="Terminus A" value="CHM Mamoudzou" half/>
+                <Field label="Terminus B" value="La Barge Petite-Terre" half/>
+                <Field label="Types de trajet" value="13 arrêts · Direct · Direct + CRA"/>
+                <Field label="Nb chauffeurs actifs" value="8 (H1 → H8)" half mono/>
+                <Field label="Secteur" value="Petite-Terre" half/>
+                <Field label="Début service AM" value="05:35 (H1 depuis CHM)" half mono/>
+                <Field label="Fin service PM" value="19:45" half mono/>
+                <Field label="CA mensuel estimé" value="8 600 €" half mono/>
+                <Field label="Capacité véhicules" value="8–9 places (Renault Trafic · VW Transporter)" half/>
+                <Field label="Modalité facturation" value="Trajet" half/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Dimanche & Jours Fériés — Rotation mai 2026">
+              <Grid>
+                <Field label="L4 matin (1 dim/2)" value="C5 AHAMADI Raenmouddine / C10 ISSIHAKA M'Changama"/>
+                <Field label="L4 après-midi (1 dim/2)" value="C8 HADHURAMI Makinedine / C14 KAMARDINE Mansour"/>
+                <Field label="L3 matin (toutes semaines)" value="D7 COMBO Said + D12 VELOU M'COLO M'Berou"/>
+                <Field label="L3 PM alternance" value="D8 ISSOUF Dailami / D13 MOURIDI Aktoir (1 dim/2)"/>
+                <Field label="L3 PM fixe" value="D14 AHAMADI Laydine (toutes semaines)"/>
+                <Field label="Jours fériés mai 2026" value="01/05 · 08/05 · 17/05 · 25/05 (même rotation dimanche)" half/>
+              </Grid>
+            </SectionCard>
+          </>)}
+
+          {section==='chauffeurs'&&(()=>{
+            // Schedule helpers
+            const dimMatin = dr => {
+              if(!dr.dimJF) return null;
+              if(dr.dimJF==='matin'||dr.dimJF==='PM fixe') return dr.am||null;
+              if(dr.dimJF==='matin 1/2') return (dr.am||'—')+' ½';
+              return null;
+            };
+            const dimSoir = dr => {
+              if(!dr.dimJF) return null;
+              if(dr.dimJF==='PM fixe'||dr.dimJF==='PM 1/2') return (dr.pm||'—')+(dr.dimJF==='PM 1/2'?' ½':'');
+              return null;
+            };
+            const SlotCell = ({value,accent})=>(
+              <div style={{
+                padding:'5px 8px',borderRadius:5,fontSize:11,fontFamily:'var(--font-mono)',fontWeight:600,
+                background:value?accent?'rgba(242,100,25,.08)':'var(--ink-50)':'var(--stroke4)',
+                color:value?accent?'var(--brand)':'var(--stroke)':'var(--stroke2)',
+                border:`1px solid ${value?accent?'rgba(242,100,25,.2)':'var(--stroke3)':'var(--stroke4)'}`,
+                textAlign:'center',minHeight:28,display:'flex',alignItems:'center',justifyContent:'center',
+              }}>{value||'Repos'}</div>
+            );
+            // Document helpers
+            const docSt = (doc) => {
+              if(!doc) return {st:'missing',color:'var(--stroke2)',label:'Manquant'};
+              const days = (new Date(doc.e) - TODAY_DOC) / 86400000;
+              if(days < 0)  return {st:'expired',color:'var(--danger)',label:'Expiré'};
+              if(days < 60) return {st:'soon',   color:'var(--warn)',  label:'À renouveler'};
+              return          {st:'ok',    color:'var(--success)',label:'Valide'};
+            };
+            const fmtDate = e => e ? e.split('-').reverse().join('/') : '—';
+            const DocSection = ({dr})=>{
+              const docs = DOCS[dr.code]||{p:null,m:null,a:null,c:null};
+              const rows=[
+                {key:'p', icon:'🪪', label:'Permis B',           doc:docs.p},
+                {key:'m', icon:'🏥', label:'Visite médicale',     doc:docs.m},
+                {key:'a', icon:'🛡', label:'Assurance véhicule',  doc:docs.a},
+                {key:'c', icon:'📋', label:'Carte professionnelle',doc:docs.c},
+              ];
+              const alerts = rows.filter(r=>docSt(r.doc).st!=='ok').length;
+              return (
+                <div style={{marginTop:14,borderTop:'1px solid var(--stroke4)',paddingTop:12}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                    <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.14em',textTransform:'uppercase',color:'var(--stroke2)'}}>Documents</div>
+                    {alerts>0&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,color:'var(--danger)',background:'rgba(209,58,42,.08)',border:'1px solid rgba(209,58,42,.2)',borderRadius:4,padding:'1px 6px'}}>{alerts} action{alerts>1?'s':''} requise{alerts>1?'s':''}</span>}
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:5}}>
+                    {rows.map(({key,icon,label,doc})=>{
+                      const {st,color,label:stLabel} = docSt(doc);
+                      return (
+                        <div key={key} style={{display:'grid',gridTemplateColumns:'20px 1fr auto auto auto',gap:8,alignItems:'center',padding:'6px 8px',borderRadius:6,background:st==='expired'?'rgba(209,58,42,.04)':st==='soon'?'rgba(232,165,35,.04)':st==='missing'?'var(--stroke4)':'transparent',border:`1px solid ${st==='ok'?'var(--stroke4)':st==='missing'?'var(--stroke3)':color+'33'}`}}>
+                          <span style={{fontSize:13}}>{icon}</span>
+                          <span style={{fontSize:12,fontWeight:600,color:'var(--stroke)'}}>{label}</span>
+                          <span style={{display:'flex',alignItems:'center',gap:4,fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,color}}>
+                            <span style={{width:6,height:6,borderRadius:'50%',background:color,flexShrink:0}}/>
+                            {stLabel}
+                          </span>
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)',minWidth:64,textAlign:'right'}}>{fmtDate(doc?.e)}</span>
+                          {editMode
+                            ? <button style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,letterSpacing:'.08em',padding:'3px 8px',borderRadius:4,border:`1.5px solid ${st==='ok'?'var(--stroke3)':'var(--brand)'}`,background:st==='ok'?'transparent':'var(--brand)',color:st==='ok'?'var(--stroke2)':'#fff',cursor:'pointer',whiteSpace:'nowrap',textTransform:'uppercase'}}>
+                                {st==='ok'?'Remplacer':'Ajouter'}
+                              </button>
+                            : st!=='missing'
+                              ? <button style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,letterSpacing:'.08em',padding:'3px 8px',borderRadius:4,border:'1.5px solid var(--stroke3)',background:'transparent',color:'var(--stroke2)',cursor:'pointer',textTransform:'uppercase'}}>Voir</button>
+                              : <div style={{width:50}}/>
+                          }
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            };
+            const maskIban = iban => {
+              if(!iban) return '—';
+              const parts = iban.split(' ');
+              return parts.map((p,i)=> i < 2 || i === parts.length-1 ? p : '····').join(' ');
+            };
+            const RibSection = ({dr})=>{
+              const rib = RIBS[dr.code];
+              return (
+                <div style={{marginTop:14,borderTop:'1px solid var(--stroke4)',paddingTop:12}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                    <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.14em',textTransform:'uppercase',color:'var(--stroke2)'}}>
+                      Coordonnées bancaires — RIB
+                    </div>
+                    {!rib&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,color:'var(--danger)',background:'rgba(209,58,42,.08)',border:'1px solid rgba(209,58,42,.2)',borderRadius:4,padding:'1px 6px'}}>Non renseigné</span>}
+                    {rib&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,color:'var(--success)',background:'rgba(46,139,87,.1)',border:'1px solid rgba(46,139,87,.25)',borderRadius:4,padding:'1px 6px'}}>✓ Enregistré</span>}
+                  </div>
+                  {rib ? (
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                      {/* IBAN row - full width */}
+                      <div style={{gridColumn:'span 2',padding:'8px 10px',background:'var(--paper)',border:'1.25px solid var(--stroke3)',borderRadius:6}}>
+                        <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--stroke2)',marginBottom:4}}>IBAN</div>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:12,fontWeight:700,letterSpacing:'.06em',color:'var(--stroke)'}}>{maskIban(rib.iban)}</span>
+                          {editMode&&<button style={{fontFamily:'var(--font-mono)',fontSize:9,padding:'2px 7px',border:'1.5px solid var(--stroke3)',borderRadius:4,background:'transparent',color:'var(--stroke2)',cursor:'pointer',textTransform:'uppercase',letterSpacing:'.06em'}}>Révéler</button>}
+                        </div>
+                      </div>
+                      {/* BIC */}
+                      <div style={{padding:'7px 10px',background:'var(--paper)',border:'1.25px solid var(--stroke3)',borderRadius:6}}>
+                        <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--stroke2)',marginBottom:3}}>BIC / SWIFT</div>
+                        <div style={{fontFamily:'var(--font-mono)',fontSize:12,fontWeight:700,color:'var(--stroke)'}}>{rib.bic}</div>
+                      </div>
+                      {/* Banque */}
+                      <div style={{padding:'7px 10px',background:'var(--paper)',border:'1.25px solid var(--stroke3)',borderRadius:6}}>
+                        <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--stroke2)',marginBottom:3}}>Établissement</div>
+                        <div style={{fontSize:12,fontWeight:600,color:'var(--stroke)'}}>{rib.banque}</div>
+                      </div>
+                      {/* Titulaire - full width */}
+                      <div style={{gridColumn:'span 2',padding:'7px 10px',background:'var(--paper)',border:'1.25px solid var(--stroke3)',borderRadius:6}}>
+                        <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--stroke2)',marginBottom:3}}>Titulaire du compte</div>
+                        <div style={{fontSize:12,fontWeight:700,color:'var(--stroke)'}}>{rib.titulaire}</div>
+                      </div>
+                      {editMode&&(
+                        <div style={{gridColumn:'span 2',display:'flex',gap:8}}>
+                          <button style={{flex:1,padding:'8px',fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',border:'1.5px solid var(--stroke3)',borderRadius:6,background:'transparent',color:'var(--stroke2)',cursor:'pointer'}}>Modifier le RIB</button>
+                          <button style={{flex:1,padding:'8px',fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',border:'1.5px solid var(--danger)',borderRadius:6,background:'transparent',color:'var(--danger)',cursor:'pointer'}}>Supprimer</button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{padding:'14px',border:'1.5px dashed var(--stroke3)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--paper)'}}>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:600,color:'var(--stroke2)'}}>Aucun RIB enregistré</div>
+                        <div style={{fontSize:11,color:'var(--stroke2)',marginTop:2}}>Requis pour le versement des rétrocessions</div>
+                      </div>
+                      {editMode
+                        ? <button style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',padding:'8px 14px',border:'none',borderRadius:6,background:'var(--brand)',color:'#fff',cursor:'pointer'}}>+ Ajouter RIB</button>
+                        : <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--stroke2)'}}>Activer le mode édition</span>
+                      }
+                    </div>
+                  )}
+                </div>
+              );
+            };
+            const ScheduleGrid = ({dr})=>{
+              const rows=[
+                {label:'Semaine',  matin:dr.am||null,       soir:dr.pm||null},
+                {label:'Samedi',   matin:dr.am||null,       soir:dr.pm||null},
+                {label:'Dimanche', matin:dimMatin(dr),      soir:dimSoir(dr)},
+                {label:'Jours fériés', matin:dimMatin(dr),  soir:dimSoir(dr)},
+              ];
+              return (
+                <div style={{marginTop:12}}>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.14em',textTransform:'uppercase',color:'var(--stroke2)',marginBottom:6}}>Disponibilités hebdomadaires</div>
+                  <div style={{display:'grid',gridTemplateColumns:'90px 1fr 1fr',gap:4,alignItems:'center'}}>
+                    <div/>
+                    {['Matin','Soir'].map(h=>(
+                      <div key={h} style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--stroke2)',textAlign:'center',paddingBottom:2}}>{h}</div>
+                    ))}
+                    {rows.map(({label,matin,soir})=>(
+                      <React.Fragment key={label}>
+                        <div style={{fontSize:11,fontWeight:600,color:'var(--stroke2)',paddingRight:6}}>{label}</div>
+                        <SlotCell value={matin} accent={!!matin}/>
+                        <SlotCell value={soir}  accent={!!soir}/>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                  {dr.astr&&(
+                    <div style={{marginTop:8,padding:'6px 10px',background:'rgba(232,165,35,.08)',border:'1px solid rgba(232,165,35,.25)',borderRadius:5,display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--warn)',fontWeight:700}}>Astreinte</span>
+                      <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--stroke)'}}>{dr.astr.replace(/·/g,' · ')}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            };
+            return (<>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <Eyebrow>36 chauffeurs actifs · L3 (14) + L4 (14) + CHM (8)</Eyebrow>
+                {editMode&&<Btn sm accent>+ Ajouter chauffeur</Btn>}
+              </div>
+              {[...L3.map(d=>({...d,_l:'L3'})),...L4.map(d=>({...d,_l:'L4'})),...CHM.map(d=>({...d,_l:'CHM'}))].map((dr,i)=>{
+                const lColor = dr._l==='L3'?'var(--brand)':dr._l==='L4'?'var(--info)':'var(--success)';
+                const veh = dr.vehicule ? (VEHICULES[dr.vehicule]||{type:'—',marque:'—',places:'—'}) : {type:'—',marque:'—',places:'—'};
+                return (
+                <div key={i} className="card" style={{padding:16,background:'#fff'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10}}>
+                      <div style={{width:34,height:34,borderRadius:'50%',background:'var(--ink-100)',border:`1.5px solid ${lColor}`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--font-mono)',fontSize:11,fontWeight:700,color:lColor}}>{dr.code}</div>
+                      <div>
+                        <div style={{fontWeight:700,fontSize:14}}>{dr.nom}</div>
+                        <div style={{fontSize:11,color:'var(--stroke2)'}}>{dr._l==='L3'?'Ligne 3 · Doujani ↔ Passot':dr._l==='L4'?'Ligne 4 · Vahibe ↔ Passamainty':'CHM · La Barge ↔ CHM'} · {dr.vehicule||'—'}</div>
+                      </div>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      {dr.dimJF&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--info)',padding:'2px 5px',border:'1px solid var(--info)',borderRadius:3}}>{dr.dimJF}</span>}
+                      {dr.astr&&<span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--warn)',padding:'2px 5px',border:'1px solid var(--warn)',borderRadius:3}}>astr</span>}
+                      <Pill variant={dr._l==='L3'?'active-brand':''} dot={dr._l!=='L3'}>{dr._l}</Pill>
+                    </div>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:8,marginBottom:0}}>
+                    <Field label="Code"    value={dr.code}       half mono/>
+                    <Field label="Tél."    value={dr.tel||'—'}   half mono/>
+                    <Field label="Plaque"  value={dr.vehicule||'—'} half mono/>
+                    <Field label="Type"    value={veh.type}      half/>
+                    <Field label="Places"  value={`${veh.places} pl · ${veh.marque}`} half/>
+                  </div>
+                  <ScheduleGrid dr={dr}/>
+                  <DocSection dr={dr}/>
+                  <RibSection dr={dr}/>
+                </div>
+              )})}
+            </>);
+          })()}
+
+          {section==='planning'&&(<>
+            <SectionCard title="Calendrier & semaines de référence">
+              <Grid>
+                <Field label="Semaine courante" value="S19 · 4–10 mai 2026" half mono/>
+                <Field label="Année de service" value="2026" half mono/>
+                <Field label="Fuseau horaire" value="UTC+3 (Mayotte · EAST)" half/>
+                <Field label="Format d'affichage date" value="DD/MM/YYYY" half mono/>
+                <Field label="Premier jour de la semaine" value="Lundi" half/>
+                <Field label="Jours fériés mai 2026" value="01/05 · 08/05 · 17/05 · 25/05" half mono/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Vue Gantt">
+              <Grid>
+                <Field label="Heure de début Gantt" value="04:00 (L4 démarre à 04:30)" half mono/>
+                <Field label="Heure de fin Gantt" value="22:00 (L4 finit à 21:15)" half mono/>
+                <Field label="Grille horaire (pas)" value="1 heure" half/>
+                <Field label="Hauteur ligne chauffeur" value="52 px" half mono/>
+                <Field label="Couleur L3" value="#F26419 (orange brand)" half mono/>
+                <Field label="Couleur L4" value="#3A6EA5 (bleu info)" half mono/>
+                <Field label="Couleur CHM" value="#2E8B57 (vert success)" half mono/>
+                <Field label="Couleur astreinte" value="#E8A523 (jaune warn) · tirets" half mono/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Horaires de service — L3 Doujani ↔ Passot Barge">
+              <Grid>
+                <Field label="Premier départ AM" value="05:00 (D1, D3, D5, D12, D13)" half mono/>
+                <Field label="Dernier retour PM" value="21:10 (D8, D9)" half mono/>
+                <Field label="Chauffeurs journée complète" value="D2 · D4 · D10 · D11 (6:00–14:50)" half/>
+                <Field label="Chauffeurs coupure AM+PM" value="D1 · D3 · D5 · D6 · D7 · D14" half/>
+                <Field label="Chauffeurs PM uniquement" value="D8 · D9 (14:20–21:30)" half/>
+                <Field label="Astreinte D14" value="4:30–6:00 + 8:10–11:00 (semaine)" half mono/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Horaires de service — L4 Vahibe ↔ Passamainty">
+              <Grid>
+                <Field label="Premier départ AM" value="04:30 (C1, C2)" half mono/>
+                <Field label="Dernier retour PM" value="21:15 (C4)" half mono/>
+                <Field label="Chauffeurs journée complète" value="C1 · C6 · C7 (4:30–14:15)" half/>
+                <Field label="Chauffeurs coupure AM+PM" value="C2 · C3 · C4" half/>
+                <Field label="Astreinte C3" value="17:00–19:00 (après PM)" half mono/>
+                <Field label="Astreinte C7" value="4:30–6:40 + 9:00–11:00" half mono/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Horaires de service — CHM La Barge ↔ CHM">
+              <Grid>
+                <Field label="Premier départ AM" value="05:35 (H1 depuis CHM)" half mono/>
+                <Field label="Dernier retour PM" value="19:45 (H1, H3, H5)" half mono/>
+                <Field label="Chauffeurs actifs" value="H1 · H3 · H5 (+ H2 H4 H6 H7 H8 en roulement)" half/>
+                <Field label="Types de navette" value="13 arrêts · Direct · Direct+CRA" half/>
+              </Grid>
+            </SectionCard>
+          </>)}
+
+          {section==='tarification'&&(<>
+            <SectionCard title="Tarifs contractuels — CADEMA L3">
+              <Grid>
+                <Field label="Prix par trajet" value="6,80 €" half mono/>
+                <Field label="Nombre théorique de trajets / mois" value="618" half mono/>
+                <Field label="Taux de rétrocession chauffeur" value="75 %" half mono/>
+                <Field label="Part entreprise" value="25 %" half mono/>
+                <Field label="Bonus ponctualité (>97 %)" value="+ 150 € / mois" half mono/>
+                <Field label="Pénalité retard (>15 mn)" value="- 12 € / trajet" half mono/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Tarifs contractuels — CADEMA L4">
+              <Grid>
+                <Field label="Prix par trajet" value="6,80 €" half mono/>
+                <Field label="Nombre théorique de trajets / mois" value="642" half mono/>
+                <Field label="Taux de rétrocession chauffeur" value="75 %" half mono/>
+                <Field label="Part entreprise" value="25 %" half mono/>
+                <Field label="Bonus ponctualité (>97 %)" value="+ 150 € / mois" half mono/>
+                <Field label="Pénalité retard (>15 mn)" value="- 12 € / trajet" half mono/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Tarifs contractuels — CHM Petite-Terre">
+              <Grid>
+                <Field label="Prix par trajet" value="5,40 €" half mono/>
+                <Field label="Nombre théorique de trajets / mois" value="284" half mono/>
+                <Field label="Taux de rétrocession chauffeur" value="72 %" half mono/>
+                <Field label="Part entreprise" value="28 %" half mono/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Calcul des rétrocessions chauffeurs">
+              <Grid>
+                <Field label="Période de paiement" value="Hebdomadaire · vendredi" half/>
+                <Field label="Mode de paiement" value="Virement bancaire" half/>
+                <Field label="Arrondi au" value="0,50 € le plus proche" half mono/>
+                <Field label="Avances autorisées" value="Non" half/>
+              </Grid>
+            </SectionCard>
+          </>)}
+
+          {section==='alertes'&&(<>
+            <SectionCard title="Seuils de ponctualité">
+              <Grid>
+                <Field label="Retard · seuil d'alerte orange" value="5 mn" half mono/>
+                <Field label="Retard · seuil d'alerte rouge" value="10 mn" half mono/>
+                <Field label="Objectif de ponctualité" value="95,0 %" half mono/>
+                <Field label="Ponctualité critique (déclenche rapport)" value="90,0 %" half mono/>
+              </Grid>
+            </SectionCard>
+            <SectionCard title="Alertes opérationnelles">
+              <div style={{display:'flex',flexDirection:'column'}}>
+                <Toggle label="Alerte incident vocal reçu" desc="Bannière + toast dans l'app Direction dès réception d'un vocal chauffeur" on/>
+                <Toggle label="Alerte chauffeur hors-ligne" desc="Notification si un chauffeur actif ne répond plus au GPS depuis 5 mn" on/>
+                <Toggle label="Alerte retard > seuil rouge" desc="Badge rouge sur la carte et notification push Direction" on/>
+                <Toggle label="Alerte panne véhicule déclarée" desc="Ouverture automatique du workflow remplacement" on/>
+                <Toggle label="Alerte document expiré" desc="7 jours avant expiration de tout document chauffeur" on/>
+                <Toggle label="Alerte facture non validée > 48 h" desc="Relance automatique au coordinateur responsable" on/>
+                <Toggle label="Alerte CA mensuel sous objectif" desc="Si le CA réalisé est inférieur à 90 % du CA contractuel en milieu de mois" on/>
+              </div>
+            </SectionCard>
+            <SectionCard title="Seuils de remplacements">
+              <Grid>
+                <Field label="Délai max. pour confirmer un remplacement" value="15 mn" half mono/>
+                <Field label="Rayon de recherche remplaçant (GPS)" value="10 km" half mono/>
+                <Field label="Nombre de candidats affichés" value="4" half mono/>
+                <Field label="Critères de classement" value="Proximité GPS · Disponibilité · Ligne habituelle" half/>
+              </Grid>
+            </SectionCard>
+          </>)}
+
+          {section==='notifications'&&(<>
+            <SectionCard title="Push mobile — Chauffeurs (FCM)">
+              <Grid>
+                <Field label="Serveur FCM" value="firebase.google.com / taxivanille-prod" half mono/>
+                <Field label="Clé API FCM" value="●●●●●●●●●●●●●●●●●● (masquée)" half mono/>
+                <Field label="Topic broadcast L3" value="/topics/l3_chauffeurs" half mono/>
+                <Field label="Topic broadcast L4" value="/topics/l4_chauffeurs" half mono/>
+                <Field label="TTL message (non livré)" value="24 h" half mono/>
+                <Field label="Priorité par défaut" value="HIGH" half mono/>
+              </Grid>
+              <div style={{display:'flex',flexDirection:'column'}}>
+                <Toggle label="Notification remplacement urgent" desc="Push immédiat vers le chauffeur remplaçant sélectionné" on/>
+                <Toggle label="Accusé de lecture requis" desc="Le remplaçant doit confirmer réception en app dans les 2 mn" on/>
+                <Toggle label="Notification annulation course" desc="Push vers le chauffeur concerné en cas d'annulation" on/>
+              </div>
+            </SectionCard>
+            <SectionCard title="Email — Clients institutionnels">
+              <Grid>
+                <Field label="Serveur SMTP" value="smtp.mailjet.com · port 587" half mono/>
+                <Field label="Expéditeur" value="planning@taxivanille.yt" half mono/>
+                <Field label="Destinataire CADEMA" value="transport@cadema.yt" half mono/>
+                <Field label="Destinataire CHM" value="logistique@chm-mayotte.fr" half mono/>
+              </Grid>
+              <div style={{display:'flex',flexDirection:'column'}}>
+                <Toggle label="Rapport hebdomadaire automatique" desc="Envoi le lundi à 8 h avec le récapitulatif de la semaine précédente" on/>
+                <Toggle label="Alerte modification planning J-1" desc="Email si le planning du lendemain est modifié après 18 h" on/>
+                <Toggle label="Facture mensuelle en PDF" desc="Envoi automatique le 1er du mois suivant" on/>
+              </div>
+            </SectionCard>
+            <SectionCard title="SMS — Secours">
+              <Grid>
+                <Field label="Fournisseur SMS" value="OVHcloud SMS API" half mono/>
+                <Field label="Numéro expéditeur" value="TAXIVANILLE" half mono/>
+                <Field label="Coût unitaire" value="0,045 € / SMS" half mono/>
+                <Field label="Quota mensuel" value="500 SMS" half mono/>
+              </Grid>
+              <div style={{display:'flex',flexDirection:'column'}}>
+                <Toggle label="SMS si push FCM non livré" desc="Bascule automatique sur SMS si le push échoue après 3 tentatives" on/>
+                <Toggle label="SMS incident critique" desc="Envoi SMS direction si incident de niveau ROUGE non traité après 5 mn"/>
+              </div>
+            </SectionCard>
+          </>)}
+
+          {section==='utilisateurs'&&(<>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <Eyebrow>4 comptes actifs</Eyebrow>
+              {editMode&&<Btn sm accent>+ Ajouter compte</Btn>}
+            </div>
+            {[
+              {prenom:'M. Aubin',         role:'Direction',     email:'aubin@taxivanille.yt',      acces:'Accès complet — toutes vues, paramétrage, validation',               dernierConnexion:'Auj. 11:42'},
+              {prenom:'Y. Hamada',        role:'Coord. L3 AM',  email:'hamada@taxivanille.yt',     acces:'Planning L3, chauffeurs L3 — pas de paramétrage',                    dernierConnexion:'Auj. 09:15'},
+              {prenom:'M. Kamardine',     role:'Coord. L3 PM',  email:'kamardine@taxivanille.yt',  acces:'Planning L3, chauffeurs L3 — pas de paramétrage',                    dernierConnexion:'Auj. 08:40'},
+              {prenom:'S. Allaoui',       role:'Coord. L4 AM',  email:'allaoui@taxivanille.yt',    acces:'Planning L4, chauffeurs L4 — pas de paramétrage',                    dernierConnexion:'Hier 17:30'},
+              {prenom:'H. El Anzize',     role:'Coord. L4 PM',  email:'elanzize@taxivanille.yt',   acces:'Planning L4, chauffeurs L4 — pas de paramétrage',                    dernierConnexion:'Auj. 10:05'},
+              {prenom:'Système API',      role:'Intégration',   email:'api@taxivanille.yt',        acces:'Lecture seule — GPS, planning (webhook entrant)',                     dernierConnexion:'Auj. 11:50'},
+            ].map((u,i)=>(
+              <div key={i} className="card" style={{padding:16,background:'#fff'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <div style={{width:36,height:36,borderRadius:'50%',background:'var(--ink-100)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--font-mono)',fontWeight:700,fontSize:12}}>{u.prenom.slice(0,2).toUpperCase()}</div>
+                    <div>
+                      <div style={{fontWeight:700,fontSize:14}}>{u.prenom}</div>
+                      <div style={{fontSize:11,color:'var(--stroke2)'}}>{u.email}</div>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <Pill variant={u.role==='Direction'?'active-dark':u.role==='Intégration'?'done':'live'} dot>{u.role}</Pill>
+                    {editMode&&<Btn sm danger>Désactiver</Btn>}
+                  </div>
+                </div>
+                <Grid>
+                  <Field label="Permissions" value={u.acces}/>
+                  <Field label="Dernière connexion" value={u.dernierConnexion} half mono/>
+                  <Field label="Authentification" value={u.role==='Intégration'?'Clé API':'Email + mot de passe'} half/>
+                </Grid>
+              </div>
+            ))}
+            <SectionCard title="Politique de sécurité">
+              <Grid>
+                <Field label="Durée de session" value="8 h (auto-déconnexion)" half mono/>
+                <Field label="Tentatives max. avant blocage" value="5" half mono/>
+                <Field label="Durée de blocage" value="30 mn" half mono/>
+                <Field label="Renouvellement mot de passe" value="Tous les 90 jours" half/>
+                <Field label="Double authentification (2FA)" value="Désactivé" half/>
+                <Field label="Journal d'accès conservé" value="12 mois" half mono/>
+              </Grid>
+            </SectionCard>
+          </>)}
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Modal – Replace Driver
+const ModalReplaceDriver = ({onClose, target})=>{
+  const isL3 = !target || target.code?.startsWith('D');
+  const isL4 = target?.code?.startsWith('C');
+  const isH   = target?.code?.startsWith('H');
+  const candidatesL3 = [
+    {code:'D5', name:'AMINA Selemani',       km:'0,8 km', avail:'libre 6:00-8:30',  match:'L3 · compatible',    best:true},
+    {code:'D14',name:'AHAMADI Laydine',      km:'2,1 km', avail:'libre 6:10-8:10',  match:'L3 · astreinte dispo'},
+    {code:'D13',name:'MOURIDI Aktoir',       km:'3,2 km', avail:'libre 5:30-8:30',  match:'L3 · compatible'},
+    {code:'D3', name:'ABDOURAHIM Mohamed',   km:'4,5 km', avail:'repos demandé',    match:'L3 · à confirmer',   dim:true},
+  ];
+  const candidatesL4 = [
+    {code:'C5', name:'AHAMADI Raenmouddine', km:'1,2 km', avail:'libre 6:00-9:30',  match:'L4 · compatible',    best:true},
+    {code:'C9', name:'SANDI Maanrouf',       km:'2,0 km', avail:'libre 5:20-8:00',  match:'L4 · compatible'},
+    {code:'C11',name:'MADI BOINA Mkidachi',  km:'3,1 km', avail:'libre 5:00-8:30',  match:'L4 · compatible'},
+    {code:'C3', name:'ABDOU MINIHADJI Amada',km:'5,0 km', avail:'astreinte 17:00',  match:'L4 · après astreinte',dim:true},
+  ];
+  const candidatesH = [
+    {code:'H3', name:'SAID ALI Kamile',      km:'0,5 km', avail:'libre 6:00-7:05',  match:'CHM · compatible',   best:true},
+    {code:'H5', name:'ATTOUMANI Kamaldine',  km:'1,1 km', avail:'libre 5:45-7:50',  match:'CHM · compatible'},
+    {code:'H2', name:'CHAMSSOUNE Ahmed',     km:'2,3 km', avail:'disponible',        match:'CHM · à confirmer'},
+  ];
+  const candidates = isH ? candidatesH : isL4 ? candidatesL4 : candidatesL3;
+  const lineLabel  = isH ? 'CHM · Barge ↔ CHM' : isL4 ? 'L4 · Vahibe ↔ Passamainty' : 'L3 · Doujani ↔ Passot Barge';
+  const defaultCourse = isH
+    ? '06:30 La Barge → CHM · 13 arrêts'
+    : isL4
+    ? '07:00 Vahibe → Passamainty'
+    : '14:40 Doujani → Passot Barge';
+  return (
+    <div className="modal-bg" onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div className="modal" style={{width:720}}>
+        {/* Header */}
+        <div style={{padding:'16px 20px',borderBottom:'1.5px solid var(--stroke)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <Eyebrow>Action rapide · 3 étapes</Eyebrow>
+            <div style={{fontSize:18,fontWeight:700,marginTop:2}}>Remplacer un chauffeur</div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontFamily:'var(--font-hand)',fontSize:16,color:'var(--brand)'}}>↳ ⏱ &lt; 8 sec</span>
+            <Btn onClick={onClose}>✕</Btn>
+          </div>
+        </div>
+        {/* Stepper */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',borderBottom:'1.5px solid var(--stroke)',background:'var(--paper)'}}>
+          {[{n:1,l:'Course à remplacer'},{n:2,l:'Nouveau chauffeur'},{n:3,l:'Confirmer + notifier'}].map((s,i)=>(
+            <div key={s.n} style={{padding:'10px 14px',borderRight:i<2?'1px solid var(--stroke3)':'none',background:i===1?'#fff':'transparent',display:'flex',alignItems:'center',gap:10}}>
+              <div className="step-num" style={{background:i<=1?'var(--stroke)':'#fff',color:i<=1?'#fff':'var(--stroke2)'}}>
+                {i<1?'✓':s.n}
+              </div>
+              <div>
+                <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.14em',textTransform:'uppercase',color:'var(--stroke2)'}}>Étape {s.n}</div>
+                <div style={{fontSize:12,fontWeight:600}}>{s.l}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Body */}
+        <div style={{padding:18,overflow:'auto',maxHeight:'calc(90vh - 220px)'}}>
+          <div className="card-soft" style={{padding:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div>
+              <Eyebrow>Chauffeur à remplacer · {lineLabel}</Eyebrow>
+              <div style={{marginTop:4,fontSize:13,fontWeight:600}}>{target?`${target.code} · ${target.nom}`:candidates[0]?.code} — {defaultCourse}</div>
+              <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)',marginTop:2}}>{lineLabel} · raison : à préciser</div>
+            </div>
+            <span style={{fontFamily:'var(--font-hand)',fontSize:14,color:'var(--brand)'}}>← modifier</span>
+          </div>
+          <Eyebrow style={{marginTop:16}}>2. Choisir un remplaçant · classés par proximité GPS</Eyebrow>
+          <div style={{marginTop:10,display:'flex',flexDirection:'column',gap:8}}>
+            {candidates.map((c,i)=>(
+              <div key={i} style={{display:'grid',gridTemplateColumns:'42px 1fr 90px 130px 90px',alignItems:'center',gap:12,padding:'10px 12px',
+                border:`1.5px solid ${c.best?'var(--brand)':'var(--stroke3)'}`,borderRadius:6,
+                background:c.best?'var(--accent-soft)':'#fff',opacity:c.dim?.55:1}}>
+                <div style={{width:34,height:34,borderRadius:'50%',background:c.best?'var(--brand)':'var(--ink-100)',color:c.best?'#fff':'var(--stroke)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--font-mono)',fontSize:11,fontWeight:700}}>{c.code}</div>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600}}>{c.name}</div>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)'}}>{c.match}</div>
+                </div>
+                <div style={{fontFamily:'var(--font-mono)',fontSize:11}}>{c.km}</div>
+                <div style={{fontSize:11,color:'var(--stroke2)'}}>{c.avail}</div>
+                <Btn accent={c.best} sm>{c.best?'Choisir →':'Choisir'}</Btn>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:10,fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)'}}>
+            ↳ Astuce : ⏎ pour valider la suggestion en surbrillance
+          </div>
+        </div>
+        {/* Footer */}
+        <div style={{padding:'12px 18px',borderTop:'1.5px solid var(--stroke)',display:'flex',justifyContent:'space-between',alignItems:'center',background:'var(--paper)'}}>
+          <div style={{fontSize:11,color:'var(--stroke2)'}}>
+            ☑ Notifier remplaçant par push FCM · ☑ Notifier {isH?'CHM':'CADEMA'}
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <Btn onClick={onClose}>← Retour</Btn>
+            <Btn accent onClick={onClose}>Confirmer →</Btn>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Modal – Command Palette
+const ModalCommand = ({onClose})=>{
+  const [q,setQ] = useState('cadema');
+  const inputRef = useRef(null);
+  useEffect(()=>{inputRef.current?.focus()},[]);
+  const results = [
+    {scope:'Chauffeurs',items:[
+      {code:'CH',main:'D1 · MOHAMED Ali',sub:'L3 · en service · 5:00-8:30'},
+      {code:'CH',main:'D5 · AMINA Selemani',sub:'L3 · libre 6:00-8:30'},
+    ]},
+    {scope:'Courses',items:[
+      {code:'CO',main:'C-2026-0387 · 14:40 DOUJANI → Passot Barge',sub:'D1 · vendredi 8 mai · 9 voyageurs'},
+    ]},
+    {scope:'Factures',items:[
+      {code:'FA',main:'F-2026-0146 · 1 850,00 €',sub:'EL ANZIZE · S19 · à valider',tag:'À valider'},
+    ]},
+    {scope:'Clients · contrats',items:[
+      {code:'CL',main:'CADEMA — L4 Vahibe ↔ Passamainty',sub:'618 trajets · 8 412 voyageurs · mars 2026'},
+    ]},
+  ];
+  const highlighted = (text)=>{
+    if(!q) return text;
+    const re = new RegExp(`(${q})`, 'gi');
+    const parts = text.split(re);
+    return parts.map((p,i)=>p.toLowerCase()===q.toLowerCase()?<mark key={i} style={{background:'rgba(242,100,25,.35)',color:'var(--stroke)',padding:'0 2px'}}>{p}</mark>:<span key={i}>{p}</span>);
+  };
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(20,15,16,.42)',zIndex:200}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div className="cmd-palette">
+        {/* Input */}
+        <div style={{padding:'14px 16px',borderBottom:'1.5px solid var(--stroke)',display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontFamily:'var(--font-mono)',fontSize:16,color:'var(--stroke2)'}}>⌕</span>
+          <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')onClose()}}
+            placeholder="Rechercher…" style={{flex:1,fontSize:16,border:'none',outline:'none',fontFamily:'var(--font-sans)'}}/>
+          <kbd onClick={onClose} style={{cursor:'pointer'}}>esc</kbd>
+        </div>
+        {/* Scopes */}
+        <div style={{padding:'8px 14px',borderBottom:'1px dashed var(--stroke3)',display:'flex',gap:6,flexWrap:'wrap'}}>
+          <span className="eyebrow" style={{alignSelf:'center'}}>Cherche dans :</span>
+          {['Tout','Chauffeurs','Courses','Factures','Clients'].map((s,i)=>(
+            <Pill key={i} variant={i===0?'active-dark':''}>{s}</Pill>
+          ))}
+        </div>
+        {/* Results */}
+        <div className="scroll">
+          {results.map((sec,si)=>(
+            <div key={si}>
+              <div style={{padding:'10px 16px 4px',display:'flex',justifyContent:'space-between'}}>
+                <Eyebrow>{sec.scope}</Eyebrow>
+                <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--stroke2)'}}>{sec.items.length} résultat{sec.items.length>1?'s':''}</span>
+              </div>
+              {sec.items.map((it,i)=>{
+                const active=si===3&&i===0;
+                return (
+                  <div key={i} style={{padding:'10px 16px',background:active?'var(--accent-soft)':'#fff',
+                    borderLeft:active?'3px solid var(--brand)':'3px solid transparent',
+                    display:'grid',gridTemplateColumns:'32px 1fr auto',alignItems:'center',gap:12,cursor:'pointer'}}>
+                    <div style={{width:26,height:26,borderRadius:4,background:active?'var(--brand)':'var(--ink-100)',
+                      color:active?'#fff':'var(--stroke)',display:'flex',alignItems:'center',justifyContent:'center',
+                      fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700}}>{it.code}</div>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:600}}>{highlighted(it.main)}</div>
+                      <div style={{fontSize:11,color:'var(--stroke2)',marginTop:2}}>{it.sub}</div>
+                    </div>
+                    <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                      {it.tag&&<Pill variant="incident">{it.tag}</Pill>}
+                      {active&&<kbd>⏎</kbd>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        {/* Footer */}
+        <div style={{padding:'10px 16px',borderTop:'1.5px solid var(--stroke)',background:'var(--paper)',display:'flex',justifyContent:'space-between',alignItems:'center',fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)'}}>
+          <div style={{display:'flex',gap:14}}>
+            <span><kbd>↑↓</kbd> naviguer</span>
+            <span><kbd>⏎</kbd> ouvrir</span>
+            <span><kbd>Ctrl+K</kbd> partout</span>
+          </div>
+          <span>9 résultats · 38 ms</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── SIDEBAR NAV ITEMS ───────────────────────────────────────────────────────
+const NAV = [
+  {id:'kpi',label:'Tableau de bord',icon:'📊'},
+  {id:'planning',label:'Planning',icon:'📅'},
+  {id:'map',label:'Carte temps réel',icon:'🗺',alert:true},
+  {id:'drivers',label:'Chauffeurs',icon:'👤'},
+  {id:'clients',label:'Clients',icon:'🏢'},
+  {id:'invoices',label:'Factures',icon:'🧾',badge:'3'},
+  {id:'reports',label:'Rapports',icon:'📄'},
+  {id:'audit',label:'Audit log',icon:'📋'},
+  {id:'parametrage',label:'Paramétrage',icon:'⚙'},
+];
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+function App() {
+  const [view,setView] = useState('kpi');
+  const [showAlert,setShowAlert] = useState(true);
+  const [showToast,setShowToast] = useState(true);
+  const [showReplace,setShowReplace] = useState(false);
+  const [replaceTarget,setReplaceTarget] = useState(null);
+  const [showCmd,setShowCmd] = useState(false);
+  const [replayMode,setReplayMode] = useState(false);
+
+  // Global Ctrl+K
+  useEffect(()=>{
+    const handler = e=>{
+      if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();setShowCmd(v=>!v)}
+      if(e.key==='Escape'){setShowCmd(false);setShowReplace(false)}
+    };
+    window.addEventListener('keydown',handler);
+    return ()=>window.removeEventListener('keydown',handler);
+  },[]);
+
+  return (
+    <>
+      <div id="root" style={{display:'flex',height:'100vh',overflow:'hidden'}}>
+        {/* Sidebar */}
+        <aside className="sidebar">
+          <div className="sidebar-logo">
+            <div className="monogram">TV</div>
+            <div>
+              <div className="brand-name">Vanille</div>
+              <div className="brand-sub">Direction</div>
+            </div>
+          </div>
+          <nav>
+            {NAV.map(item=>{
+              const activeId = view==='invoiceCreate'?'invoices':view==='customReport'?'reports':view==='replacement'?'audit':view;
+              return (
+              <div key={item.id} className={`nav-item${activeId===item.id?' active':''}${item.alert&&showAlert?' alert-ring':''}`}
+                onClick={()=>setView(item.id)}>
+                {item.alert&&showAlert&&<span className="nav-dot"/>}
+                <span style={{flex:1}}>{item.label}</span>
+                {item.badge&&!item.alert&&<span className="nav-badge">{item.badge}</span>}
+                {item.alert&&showAlert&&<span className="nav-badge">2</span>}
+              </div>
+              );
+            })}
+          </nav>
+          <div style={{padding:'10px 12px',borderTop:'1px dashed var(--stroke3)'}}>
+            <Btn sm style={{width:'100%',marginBottom:8}} onClick={()=>setShowCmd(true)}>
+              <span style={{marginRight:6}}>⌕</span> Recherche <kbd style={{marginLeft:'auto',fontSize:9}}>Ctrl+K</kbd>
+            </Btn>
+          </div>
+          <div className="sidebar-user">
+            <b>M. Aubin</b>
+            Direction · connecté
+          </div>
+          <a href="Android.html" target="_blank" style={{
+            display:'flex',alignItems:'center',gap:8,
+            padding:'8px 14px 12px',
+            textDecoration:'none',color:'var(--stroke3)',
+            fontSize:10,fontFamily:'var(--font-mono)',letterSpacing:'.1em',
+            transition:'color .15s',
+          }}
+            onMouseEnter={e=>e.currentTarget.style.color='var(--stroke2)'}
+            onMouseLeave={e=>e.currentTarget.style.color='var(--stroke3)'}
+          >
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style={{flexShrink:0}}>
+              <rect x="2" y="3" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M5 3V2M9 3V2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              <circle cx="5" cy="7" r="1" fill="currentColor"/>
+              <circle cx="9" cy="7" r="1" fill="currentColor"/>
+            </svg>
+            App chauffeur
+          </a>
+        </aside>
+
+        {/* Main */}
+        <div className="main">
+          {showAlert&&view!=='invoiceCreate'&&view!=='customReport'&&(
+            <AlertBanner
+              driver="D7 · COMBO Said"
+              message="Vocal incident reçu · M'Tsapéré · panne moteur — demande remplaçant 12:00"
+              age="14 s"
+              onDismiss={()=>setShowAlert(false)}
+              onReplace={()=>{setReplaceTarget(L3.find(d=>d.code==='D7'));setShowReplace(true);setShowAlert(false)}}
+            />
+          )}
+          {view==='kpi'&&<ViewKPI/>}
+          {view==='planning'&&<ViewPlanning onShowAlert={()=>setShowAlert(true)} onReplace={(dr)=>{setReplaceTarget(dr);setShowReplace(true)}}/>}
+          {view==='map'&&<ViewMap replayMode={replayMode} setReplayMode={setReplayMode}/>}
+          {view==='drivers'&&<ViewDrivers/>}
+          {view==='invoices'&&<ViewInvoices onNew={()=>setView('invoiceCreate')}/>}
+          {view==='invoiceCreate'&&<ViewInvoiceCreate onBack={()=>setView('invoices')}/>}
+          {view==='reports'&&<ViewReports onCustom={()=>setView('customReport')}/>}
+          {view==='customReport'&&<ViewCustomReport onBack={()=>setView('reports')}/>}
+          {view==='audit'&&<ViewAudit/>}
+          {view==='parametrage'&&<ViewParametrage/>}
+          {view==='clients'&&(
+            <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+              <PageBar title="Gestion clients" sub="Direction · 3 contrats actifs" actions={[{l:'+ Contrat',accent:true}]}/>
+              <div className="scroll" style={{padding:24}}>
+                {[{nom:'CADEMA — Ligne 3',sub:'Doujani ↔ Passot Barge · 14 chauffeurs',ca:'~38 240 € / mois',statut:'AO'},
+                  {nom:'CADEMA — Ligne 4',sub:'Vahibe ↔ Passamainty (PEM) · 14 chauffeurs',ca:'~24 000 € / mois',statut:'AO'},
+                  {nom:'CHM Petite-Terre',sub:'CHM ↔ La Barge · 13 arrêts · 8 chauffeurs',ca:'~8 600 € / mois',statut:'Marché'},
+                ].map((c,i)=>(
+                  <div key={i} className="card" style={{padding:20,marginBottom:16,background:'#fff'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                      <div>
+                        <div style={{fontWeight:700,fontSize:18}}>{c.nom}</div>
+                        <div style={{fontSize:13,color:'var(--stroke2)',marginTop:4}}>{c.sub}</div>
+                      </div>
+                      <Pill>{c.statut}</Pill>
+                    </div>
+                    <div className="divider-dash" style={{margin:'14px 0'}}/>
+                    <div style={{display:'flex',gap:32,fontSize:13}}>
+                      <div><Eyebrow>CA mensuel</Eyebrow><div style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:20,marginTop:4}}>{c.ca}</div></div>
+                      <div><Eyebrow>Trajets mars 2026</Eyebrow><div style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:20,marginTop:4}}>{i===0?618:i===1?642:284}</div></div>
+                    </div>
+                    <div style={{display:'flex',gap:8,marginTop:14}}>
+                      <Btn sm>Voir rapport</Btn>
+                      <Btn sm>Factures</Btn>
+                      <Btn sm accent>Planning</Btn>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Toast */}
+      {showToast&&(
+        <div className="toast">
+          <div className="toast-inner">
+            <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+              <div style={{width:28,height:28,borderRadius:'50%',flexShrink:0,background:'var(--danger)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,animation:'pulse-ring 1.4s infinite'}}>!</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:12,fontWeight:700}}>Nouvel incident</div>
+                <div style={{fontSize:11,color:'var(--stroke2)',marginTop:2}}>D7 · COMBO Said a envoyé un vocal il y a 14 s · M'Tsapéré</div>
+              </div>
+              <button style={{color:'var(--stroke2)',fontSize:14}} onClick={()=>setShowToast(false)}>✕</button>
+            </div>
+            <div style={{display:'flex',gap:8,marginTop:12}}>
+              <Btn sm style={{flex:1}} onClick={()=>{setView('map');setShowToast(false)}}>Voir sur la carte</Btn>
+              <Btn sm accent style={{flex:1}} onClick={()=>{setReplaceTarget(L3.find(d=>d.code==='D7'));setShowReplace(true);setShowToast(false)}}>⇄ Remplacer</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal – Replace driver */}
+      {showReplace&&<ModalReplaceDriver target={replaceTarget} onClose={()=>{setShowReplace(false);setReplaceTarget(null)}}/>}
+
+      {/* Command palette */}
+      {showCmd&&<ModalCommand onClose={()=>setShowCmd(false)}/>}
+    </>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>
