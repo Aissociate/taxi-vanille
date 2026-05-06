@@ -1,80 +1,77 @@
 'use client';
-import { useState } from 'react';
-import { STATS } from '@/lib/data';
-import { PageBar, Eyebrow, KpiCard, Btn } from '@/components/ui';
+import { Eyebrow, Btn } from '@/components/ui';
 
-const clients = [
-  {nom:'CADEMA — Ligne 3',sub:'Doujani ↔ Passot La Barge · 14 chauffeurs',n:618},
-  {nom:'CADEMA — Ligne 4',sub:'Vahibe ↔ PEM Passamainty · 14 chauffeurs',n:642},
-  {nom:'CHM Petite-Terre',sub:'CHM ↔ La Barge · 13 arrêts · 8 chauffeurs',n:284},
+const CLIENTS = [
+  {
+    nom: 'CADEMA — Ligne 3',
+    sub: 'Doujani ↔ Passot Barge · 14 chauffeurs',
+    badge: 'AO',
+    ca: '~38 240 € / mois',
+    trajets: 618,
+  },
+  {
+    nom: 'CADEMA — Ligne 4',
+    sub: 'Vahibe ↔ Passamainty (PEM) · 14 chauffeurs',
+    badge: 'AO',
+    ca: '~24 000 € / mois',
+    trajets: 642,
+  },
+  {
+    nom: 'CHM Petite-Terre',
+    sub: 'CHM ↔ La Barge · 13 arrêts · 8 chauffeurs',
+    badge: 'MARCHE',
+    ca: '~8 600 € / mois',
+    trajets: 284,
+  },
 ];
 
 export default function ClientsPage() {
-  const [clientIdx, setClientIdx] = useState(1);
-  const c = clients[clientIdx];
-
   return (
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-      <PageBar title="Rapports clients institutionnels" sub="Direction · Rapports"
-        actions={[{l:'Rapport sur mesure →'},{l:'Exporter PDF'},{l:'Excel',accent:true}]}/>
-      <div className="scroll" style={{padding:24,display:'grid',gridTemplateColumns:'300px 1fr',gap:20,alignContent:'start'}}>
-        <div className="card" style={{background:'#fff',padding:12,alignSelf:'start'}}>
-          <Eyebrow>Clients</Eyebrow>
-          {clients.map((cl,i) => (
-            <div key={i} onClick={() => setClientIdx(i)} style={{
-              padding:'12px 8px',borderBottom:'1px dashed var(--stroke3)',cursor:'pointer',
-              background:i===clientIdx?'var(--accent-soft)':'transparent',
-              borderLeft:i===clientIdx?'3px solid var(--brand)':'3px solid transparent',
-            }}>
-              <div style={{fontWeight:i===clientIdx?700:600,fontSize:13}}>{cl.nom}</div>
-              <div style={{fontSize:10,color:'var(--stroke2)'}}>{cl.sub}</div>
-              <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--stroke2)',marginTop:4}}>
-                {cl.n} trajets · mars 2026
+      {/* Header */}
+      <div style={{padding:'14px 24px',borderBottom:'1.5px solid var(--stroke)',display:'flex',
+        alignItems:'center',justifyContent:'space-between',background:'#fff',flexShrink:0}}>
+        <div>
+          <div className="eyebrow">Direction · 3 contrats actifs</div>
+          <h1 style={{fontSize:20,fontWeight:700,marginTop:3}}>Gestion clients</h1>
+        </div>
+        <Btn accent>+ Contrat</Btn>
+      </div>
+
+      {/* Cards */}
+      <div className="scroll" style={{padding:24,display:'flex',flexDirection:'column',gap:16}}>
+        {CLIENTS.map(c => (
+          <div key={c.nom} className="card" style={{background:'#fff',padding:24}}>
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
+              <div>
+                <div style={{fontSize:18,fontWeight:800,color:'var(--stroke)'}}>{c.nom}</div>
+                <div style={{fontSize:13,color:'var(--stroke2)',marginTop:3}}>{c.sub}</div>
+              </div>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,
+                border:'1.5px solid var(--stroke3)',borderRadius:999,padding:'3px 10px',
+                color:'var(--stroke2)',whiteSpace:'nowrap'}}>{c.badge}</span>
+            </div>
+
+            <div style={{borderTop:'1px dashed var(--stroke3)',paddingTop:14,
+              display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:14}}>
+              <div>
+                <div className="eyebrow" style={{color:'var(--brand)'}}>CA mensuel</div>
+                <div style={{fontFamily:'var(--font-mono)',fontSize:22,fontWeight:800,marginTop:4}}>{c.ca}</div>
+              </div>
+              <div>
+                <div className="eyebrow" style={{color:'var(--brand)'}}>Trajets mars 2026</div>
+                <div style={{fontFamily:'var(--font-mono)',fontSize:22,fontWeight:800,marginTop:4}}>{c.trajets}</div>
               </div>
             </div>
-          ))}
-        </div>
 
-        <div style={{display:'flex',flexDirection:'column',gap:16}}>
-          <div className="card" style={{background:'#fff',padding:20}}>
-            <Eyebrow>{c.nom} · Mars 2026</Eyebrow>
-            <div style={{fontSize:22,fontWeight:700,marginTop:6}}>
-              {STATS.trajets.ef} trajets · {STATS.voy.total.toLocaleString('fr-FR')} voyageurs · {STATS.trajets.taux} % réalisation
+            <div style={{display:'flex',gap:8}}>
+              <Btn sm>Voir rapport</Btn>
+              <Btn sm>Factures</Btn>
+              <Btn sm accent>Planning</Btn>
             </div>
           </div>
-
-          <div style={{display:'grid',gap:12,gridTemplateColumns:'repeat(4,1fr)'}}>
-            <KpiCard label="Trajets théoriques" value={STATS.trajets.th} delta={`• ${STATS.trajets.non} non eff.`}/>
-            <KpiCard label="Ponctualité" value={`${STATS.retards.ponct} %`} delta={`${STATS.retards.plus10} retards >10 mn`}/>
-            <KpiCard label="Voy. moy / trajet" value={STATS.voy.parTj} delta="objectif 12,0"/>
-            <KpiCard label="Voy. moy / jour" value={STATS.voy.moy} delta="31 j"/>
-          </div>
-
-          <div className="card" style={{padding:20,background:'#fff'}}>
-            <Eyebrow>Détail par chauffeur</Eyebrow>
-            <table style={{marginTop:12}}>
-              <thead>
-                <tr>
-                  <th>Code</th><th>Chauffeur</th>
-                  <th style={{textAlign:'center'}}>Trajets</th>
-                  <th style={{textAlign:'center'}}>Retards</th>
-                  <th style={{textAlign:'right'}}>Voyageurs</th>
-                </tr>
-              </thead>
-              <tbody>
-                {STATS.parCh.map(r => (
-                  <tr key={r.code}>
-                    <td style={{fontFamily:'var(--font-mono)',fontWeight:700}}>{r.code}</td>
-                    <td>{r.nom}</td>
-                    <td style={{fontFamily:'var(--font-mono)',fontWeight:700,textAlign:'center'}}>{r.trajets}</td>
-                    <td style={{fontFamily:'var(--font-mono)',textAlign:'center',color:r.retards>3?'var(--warn)':'inherit'}}>{r.retards}</td>
-                    <td style={{fontFamily:'var(--font-mono)',fontWeight:700,textAlign:'right'}}>{r.vy.toLocaleString('fr-FR')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        ))}
+        <div style={{height:24}}/>
       </div>
     </div>
   );

@@ -38,6 +38,7 @@ nav.sidebar-nav{flex:1;padding:10px;display:flex;flex-direction:column;gap:2px;o
 .nav-item .nav-badge{margin-left:auto;font-family:var(--font-mono);font-size:9px;font-weight:800;background:var(--danger);color:#fff;padding:2px 6px;border-radius:999px}
 .nav-item.alert-ring{border-color:var(--danger)}
 .nav-dot{width:8px;height:8px;border-radius:50%;background:var(--danger);animation:pulse-ring 1.4s infinite;flex-shrink:0}
+.nav-live-dot{width:8px;height:8px;border-radius:50%;background:var(--brand);animation:pulse-ring 1.4s infinite;flex-shrink:0}
 @keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(209,58,42,.55)}70%{box-shadow:0 0 0 10px rgba(209,58,42,0)}100%{box-shadow:0 0 0 0 rgba(209,58,42,0)}}
 .sidebar-user{padding:12px 14px;border-top:1px dashed var(--stroke3);font-size:11px;color:var(--stroke2)}
 .sidebar-user b{display:block;font-size:12px;color:var(--stroke)}

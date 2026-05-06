@@ -108,10 +108,10 @@ export default function DriversPage() {
         </div>
 
         <div style={{padding:'16px 24px',display:'grid',gap:12,gridTemplateColumns:'repeat(4,1fr)'}}>
-          <KpiCard label="Courses" value={kpi.courses} delta={kpi.label}/>
-          <KpiCard label="Passagers" value={kpi.passagers} delta={`moy ${(kpi.passagers/Math.max(kpi.courses,1)).toFixed(1)}/course`}/>
-          <KpiCard label="CA généré" value={kpi.ca} delta="↑ 6 %"/>
-          <KpiCard label="Incidents" value={kpi.inc} delta={kpi.inc===0?'Aucun':`sur ${kpi.label.toLowerCase()}`}/>
+          <KpiCard label="S19 — Courses" value={kpi.courses} delta={`↑ 2 vs S-1`}/>
+          <KpiCard label="S19 — Passagers" value={kpi.passagers} delta={`moy ${(kpi.passagers/Math.max(kpi.courses,1)).toFixed(1)} / j`}/>
+          <KpiCard label="S19 — CA" value={kpi.ca} delta="↑ 6 %"/>
+          <KpiCard label="Incidents 30 j" value={kpi.inc} delta={kpi.inc===0?'Aucun':'voie bloquée'} danger={kpi.inc>0}/>
         </div>
 
         <div style={{padding:'0 24px 24px',display:'grid',gap:16,gridTemplateColumns:'2fr 1fr'}}>
@@ -189,6 +189,60 @@ export default function DriversPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* Invoice history */}
+        <div style={{padding:'0 24px 24px'}}>
+          <div className="card" style={{padding:0,overflow:'hidden'}}>
+            <div style={{padding:'12px 18px',borderBottom:'1.5px solid var(--stroke3)',background:'var(--paper)',
+              display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <Eyebrow>Historique des factures · 6 dernières semaines</Eyebrow>
+              <button className="btn btn-sm">Voir tout</button>
+            </div>
+            <table style={{width:'100%'}}>
+              <thead>
+                <tr style={{background:'var(--paper)'}}>
+                  <th style={{padding:'8px 18px',fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--stroke2)',fontWeight:400}}>Sem.</th>
+                  <th style={{padding:'8px 18px',fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--stroke2)',fontWeight:400}}>Référence · Période</th>
+                  <th style={{padding:'8px 18px',fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--stroke2)',fontWeight:400,textAlign:'right'}}>Montant</th>
+                  <th style={{padding:'8px 18px',fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--stroke2)',fontWeight:400}}>Statut</th>
+                  <th style={{padding:'8px 18px'}}/>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  {sem:'S19',ref:'F2026-150',per:'4–10 mai 2026',   amt:'1 200,00 €',status:'brouillon'},
+                  {sem:'S18',ref:'F2026-140',per:'27 avr–3 mai',    amt:'1 150,00 €',status:'validée'},
+                  {sem:'S17',ref:'F2026-130',per:'20–26 avr',       amt:'1 176,00 €',status:'payée'},
+                  {sem:'S16',ref:'F2026-120',per:'13–19 avr',       amt:'1 120,00 €',status:'payée'},
+                  {sem:'S15',ref:'F2026-110',per:'6–12 avr',        amt:'1 174,00 €',status:'payée'},
+                  {sem:'S14',ref:'F2026-100',per:'30 mar–5 avr',    amt:'1 126,00 €',status:'payée'},
+                ].map((row,i) => (
+                  <tr key={row.ref} style={{borderTop:'1px dashed var(--stroke3)'}}>
+                    <td style={{padding:'12px 18px',fontFamily:'var(--font-mono)',fontSize:11,fontWeight:700,color:'var(--stroke2)'}}>{row.sem}</td>
+                    <td style={{padding:'12px 18px'}}>
+                      <div style={{fontFamily:'var(--font-mono)',fontSize:12,fontWeight:700}}>{row.ref}</div>
+                      <div style={{fontSize:11,color:'var(--stroke2)',marginTop:2}}>{row.per}</div>
+                    </td>
+                    <td style={{padding:'12px 18px',fontFamily:'var(--font-mono)',fontSize:14,fontWeight:700,textAlign:'right'}}>{row.amt}</td>
+                    <td style={{padding:'12px 18px'}}>
+                      <span style={{
+                        fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,
+                        padding:'3px 10px',borderRadius:999,
+                        background:row.status==='brouillon'?'var(--ink-200)':row.status==='validée'?'var(--accent-soft)':'var(--ink-100)',
+                        color:row.status==='brouillon'?'var(--stroke2)':row.status==='validée'?'var(--brand)':'var(--stroke2)',
+                      }}>{row.status}</span>
+                    </td>
+                    <td style={{padding:'12px 18px',textAlign:'right'}}>
+                      {row.status==='brouillon'
+                        ? <button className="btn btn-sm btn-accent">Valider</button>
+                        : <button className="btn btn-sm">Voir</button>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
