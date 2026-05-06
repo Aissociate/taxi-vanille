@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { Kysely } from 'kysely';
+import { Kysely, sql } from 'kysely';
 import { DB_TOKEN } from '../database/database.module';
 import { GpsGateway } from './gps.gateway';
 import { GpsPingDto } from './gps.dto';
@@ -48,12 +48,20 @@ export class GpsService {
     // Dernière position connue de chaque chauffeur actif (dans les 5 dernières minutes)
     const since = new Date(Date.now() - 5 * 60 * 1000);
     return this.db
-      .selectFrom('gps_pings as g')
-      .innerJoin('drivers as d', 'd.id', 'g.driver_id')
-      .select(['g.driver_id', 'd.driver_number', 'd.full_name', 'g.lat', 'g.lng', 'g.trip_id', 'g.recorded_at'])
-      .where('g.recorded_at', '>=', since)
-      .distinctOn(['g.driver_id'])
-      .orderBy(['g.driver_id', 'g.recorded_at desc'])
+      .selectFrom(
+        this.db
+          .selectFrom('gps_pings as g')
+          .innerJoin('drivers as d', 'd.id', 'g.driver_id')
+          .select([
+            'g.driver_id', 'd.driver_number', 'd.full_name',
+            'g.lat', 'g.lng', 'g.trip_id', 'g.recorded_at',
+            sql<number>`row_number() over (partition by g.driver_id order by g.recorded_at desc)`.as('rn'),
+          ])
+          .where('g.recorded_at', '>=', since)
+          .as('ranked'),
+      )
+      .selectAll()
+      .where('rn', '=', 1)
       .execute();
   }
 

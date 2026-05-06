@@ -7,7 +7,9 @@
   --accent: #00c9a7;
 }
 
+html,
 body {
+  height: 100%;
   font-family: system-ui, -apple-system, sans-serif;
   background: #f7f8fa;
 }

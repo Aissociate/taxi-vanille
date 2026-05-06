@@ -22,9 +22,9 @@ export class KpiService {
     const [totalStats] = await tripsQ
       .select([
         this.db.fn.count<number>('id').as('total_trips'),
-        this.db.fn.countAll().filterWhere('status', '=', 'completed').as('completed_trips'),
-        this.db.fn.sum<number>('amount').filterWhere('status', '=', 'completed').as('total_revenue'),
-        this.db.fn.avg<number>('amount').filterWhere('status', '=', 'completed').as('avg_revenue_per_trip'),
+        sql<number>`count(*) filter (where status = 'completed')`.as('completed_trips'),
+        sql<number>`sum(amount) filter (where status = 'completed')`.as('total_revenue'),
+        sql<number>`avg(amount) filter (where status = 'completed')`.as('avg_revenue_per_trip'),
       ])
       .execute();
 

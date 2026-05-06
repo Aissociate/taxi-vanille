@@ -4,7 +4,8 @@ import { DB_TOKEN } from '../database/database.module';
 import { StorageService } from '../common/storage.service';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import PDFDocument from 'pdfkit';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PDFDocument = require('pdfkit');
 
 @Injectable()
 export class InvoicesService {

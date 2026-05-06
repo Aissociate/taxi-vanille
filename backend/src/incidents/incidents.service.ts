@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { Kysely } from 'kysely';
+import { Kysely, sql } from 'kysely';
 import { DB_TOKEN } from '../database/database.module';
 import { StorageService } from '../common/storage.service';
 import { CreateIncidentDto } from './incidents.dto';
@@ -46,9 +46,7 @@ export class IncidentsService {
         'i.id', 'i.types', 'i.lat', 'i.lng', 'i.notes', 'i.created_at',
         'd.driver_number', 'd.full_name as driver_name',
         't.scheduled_at',
-        this.db.fn.exists(
-          this.db.selectFrom('incidents').select('audio_s3_key').whereRef('incidents.id', '=', 'i.id').where('audio_s3_key', 'is not', null)
-        ).as('has_audio'),
+        sql<boolean>`(i.audio_s3_key is not null)`.as('has_audio'),
       ]);
 
     if (filters.driverId) q = q.where('i.driver_id', '=', filters.driverId);
