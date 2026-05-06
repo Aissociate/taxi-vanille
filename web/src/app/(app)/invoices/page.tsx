@@ -1,56 +1,86 @@
 'use client';
 import { useState } from 'react';
 import { INVOICES } from '@/lib/data';
-import { PageBar, Eyebrow, Pill, Btn, StatusPill } from '@/components/ui';
+import { PageBar, Eyebrow, Btn } from '@/components/ui';
+
+type Status = 'draft' | 'validated' | 'paid';
+
+const STATUS_META: Record<Status, { label: string; color: string; dot: string }> = {
+  draft:     { label:'Reçue',  color:'var(--danger)', dot:'var(--danger)' },
+  validated: { label:'Validé', color:'var(--success)', dot:'var(--success)' },
+  paid:      { label:'Payé',   color:'var(--stroke2)', dot:'var(--stroke3)' },
+};
+
+function StatusPill({ s }: { s: string }) {
+  const m = STATUS_META[s as Status] ?? STATUS_META.paid;
+  return (
+    <span style={{display:'inline-flex',alignItems:'center',gap:5,fontFamily:'var(--font-mono)',
+      fontSize:10,fontWeight:800,letterSpacing:'.1em',textTransform:'uppercase',
+      padding:'2px 8px',borderRadius:999,border:`1.25px solid ${m.color}`,color:m.color,
+      whiteSpace:'nowrap'}}>
+      <span style={{width:6,height:6,borderRadius:'50%',background:m.dot,flexShrink:0}}/>
+      {m.label}
+    </span>
+  );
+}
+
+const COLS = [
+  { title:'Reçue · à valider', key:'draft' as Status },
+  { title:'Validée · à payer', key:'validated' as Status },
+  { title:'Payée', key:'paid' as Status },
+];
 
 export default function InvoicesPage() {
   const [view, setView] = useState<'kanban'|'new'>('kanban');
 
-  if (view === 'new') {
-    return <NewInvoice onBack={() => setView('kanban')}/>;
-  }
-
-  const cols = [
-    {title:'Reçue · à valider', key:'draft', count:4},
-    {title:'Validée · à payer', key:'validated', count:2},
-    {title:'Payée', key:'paid', count:2},
-  ];
+  if (view === 'new') return <NewInvoice onBack={() => setView('kanban')}/>;
 
   return (
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <PageBar title="Factures de rétrocession · vue Kanban" sub="Direction · Factures"
         actions={[{l:'Vue liste'},{l:'+ Nouvelle facture',accent:true,onClick:()=>setView('new')}]}/>
       <div className="scroll" style={{padding:24,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,alignContent:'start'}}>
-        {cols.map(col => (
-          <div key={col.key} className="card" style={{padding:14,background:'var(--paper)',display:'flex',flexDirection:'column',gap:10}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <Eyebrow>{col.title}</Eyebrow>
-              <Pill>{String(col.count)}</Pill>
-            </div>
-            {INVOICES.filter(iv => iv.status===col.key).map(iv => (
-              <div key={iv.id} className="card" style={{padding:12,background:'#fff'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <span style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:12}}>{iv.id}</span>
-                  <StatusPill s={iv.status}/>
-                </div>
-                <div style={{fontSize:12,marginTop:6,color:'var(--stroke)'}}>{iv.driver}</div>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:8}}>
-                  <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--stroke2)',letterSpacing:'.1em',textTransform:'uppercase'}}>{iv.week}</span>
-                  <span style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:16}}>{iv.amount} €</span>
-                </div>
-                {iv.status==='draft' && (
-                  <div style={{display:'flex',gap:6,marginTop:10}}>
-                    <Btn sm style={{flex:1}}>Aperçu PDF</Btn>
-                    <Btn sm accent style={{flex:1}}>Valider →</Btn>
-                  </div>
-                )}
-                {iv.status==='validated' && (
-                  <Btn sm accent style={{width:'100%',marginTop:10}}>Mettre en paiement</Btn>
-                )}
+        {COLS.map(col => {
+          const cards = INVOICES.filter(iv => iv.status === col.key);
+          return (
+            <div key={col.key} style={{display:'flex',flexDirection:'column',gap:10}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,paddingBottom:10,borderBottom:'1.5px solid var(--stroke3)'}}>
+                <span style={{fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'.14em',textTransform:'uppercase',
+                  color:'var(--stroke2)',fontWeight:700,flex:1}}>{col.title}</span>
+                <span style={{width:24,height:24,borderRadius:'50%',border:'1.5px solid var(--stroke3)',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontFamily:'var(--font-mono)',fontSize:11,fontWeight:800,color:'var(--stroke2)',flexShrink:0}}>
+                  {cards.length}
+                </span>
               </div>
-            ))}
-          </div>
-        ))}
+              {cards.map(iv => (
+                <div key={iv.id} className="card" style={{padding:14,background:'#fff'}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                    <span style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:12,color:'var(--stroke)'}}>{iv.id}</span>
+                    <StatusPill s={iv.status}/>
+                  </div>
+                  <div style={{fontSize:13,color:'var(--stroke)',marginBottom:10}}>{iv.driver}</div>
+                  <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:iv.status==='paid'?0:12}}>
+                    <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,color:'var(--stroke2)',
+                      letterSpacing:'.12em',textTransform:'uppercase'}}>{iv.week}</span>
+                    <span style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:17,letterSpacing:'.02em'}}>
+                      {iv.amount} <span style={{fontSize:14}}>€</span>
+                    </span>
+                  </div>
+                  {iv.status === 'draft' && (
+                    <div style={{display:'flex',gap:7}}>
+                      <Btn sm style={{flex:1}}>Aperçu PDF</Btn>
+                      <Btn sm accent style={{flex:1}}>Valider →</Btn>
+                    </div>
+                  )}
+                  {iv.status === 'validated' && (
+                    <Btn sm accent style={{width:'100%'}}>Mettre en paiement</Btn>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -64,7 +94,7 @@ function NewInvoice({ onBack }: { onBack: () => void }) {
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <PageBar title="Nouvelle facture client" sub="Direction · Factures › Nouvelle"
         actions={[
-          {l:'← Retour aux factures',onClick:onBack},
+          {l:'← Retour',onClick:onBack},
           {l:'Enregistrer brouillon'},
           {l:'Émettre la facture',accent:true,onClick:()=>setStep(4)},
         ]}/>

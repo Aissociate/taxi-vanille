@@ -79,14 +79,32 @@ export const STATS = {
 };
 
 export const INVOICES = [
-  {id:'F2026-0146',driver:'C1 · EL ANZIZE Hamada',      week:'S19',amount:'1 850,00',status:'draft'},
-  {id:'F2026-0147',driver:'C14 · KAMARDINE Mansour',     week:'S19',amount:'1 410,00',status:'draft'},
-  {id:'F2026-0148',driver:'C8 · HADHURAMI Makinedine',  week:'S19',amount:'1 320,00',status:'draft'},
-  {id:'F2026-0149',driver:'C5 · AHAMADI Raenmouddine',  week:'S19',amount:'1 180,00',status:'draft'},
-  {id:'F2026-0144',driver:'D7 · COMBO Said',             week:'S18',amount:'980,00',status:'validated'},
-  {id:'F2026-0145',driver:"D12 · VELOU M'Berou",         week:'S18',amount:'1 100,00',status:'validated'},
-  {id:'F2026-0142',driver:'D1 · MOHAMED Ali',            week:'S18',amount:'1 240,00',status:'paid'},
-  {id:'F2026-0143',driver:'D5 · AMINA Selemani',         week:'S18',amount:'1 380,50',status:'paid'},
+  // REÇUE · À VALIDER — S19
+  {id:'F2026-0146',driver:'C1 · EL ANZIZE Hamada',           week:'S19',amount:'1 850,00',status:'draft'},
+  {id:'F2026-0147',driver:'C14 · KAMARDINE Mansour',         week:'S19',amount:'1 410,00',status:'draft'},
+  {id:'F2026-0148',driver:'C8 · HADHURAMI Makinedine',       week:'S19',amount:'1 320,00',status:'draft'},
+  {id:'F2026-0149',driver:'C5 · AHAMADI Raenmouddine',       week:'S19',amount:'1 180,00',status:'draft'},
+  {id:'F2026-0150',driver:"C10 · ISSIHAKA M'Changama",       week:'S19',amount:'1 050,00',status:'draft'},
+  {id:'F2026-0151',driver:'C6 · OUSSENI Soula',              week:'S19',amount:'1 120,00',status:'draft'},
+  {id:'F2026-0152',driver:'D1 · MOHAMED Ali',                week:'S19',amount:'1 200,00',status:'draft'},
+  {id:'F2026-0153',driver:'D3 · ABDOURAHIM Mohamed',         week:'S19',amount:'980,00', status:'draft'},
+  // VALIDÉE · À PAYER — S18
+  {id:'F2026-0144',driver:'D7 · COMBO Said',                 week:'S18',amount:'980,00', status:'validated'},
+  {id:'F2026-0145',driver:"D12 · VELOU M'COLO M'Berou",      week:'S18',amount:'1 100,00',status:'validated'},
+  {id:'F2026-0141',driver:'C7 · HAMIDOU Dahalani',           week:'S18',amount:'1 050,00',status:'validated'},
+  // PAYÉE — S18 et antérieures
+  {id:'F2026-0142',driver:'D1 · MOHAMED Ali',                week:'S18',amount:'1 240,00',status:'paid'},
+  {id:'F2026-0143',driver:'D5 · AMINA Selemani',             week:'S18',amount:'1 380,50',status:'paid'},
+  {id:'F2026-0138',driver:'C1 · EL ANZIZE Hamada',           week:'S17',amount:'1 820,00',status:'paid'},
+  {id:'F2026-0139',driver:'C14 · KAMARDINE Mansour',         week:'S17',amount:'1 390,00',status:'paid'},
+  {id:'F2026-0136',driver:'D5 · AMINA Selemani',             week:'S17',amount:'1 350,00',status:'paid'},
+  {id:'F2026-0134',driver:'D1 · MOHAMED Ali',                week:'S16',amount:'1 210,00',status:'paid'},
+  {id:'F2026-0133',driver:'C8 · HADHURAMI Makinedine',       week:'S16',amount:'1 290,00',status:'paid'},
+  {id:'F2026-0130',driver:'C1 · EL ANZIZE Hamada',           week:'S15',amount:'1 800,00',status:'paid'},
+  {id:'F2026-0129',driver:'D7 · COMBO Said',                 week:'S15',amount:'960,00', status:'paid'},
+  {id:'F2026-0128',driver:'C14 · KAMARDINE Mansour',         week:'S15',amount:'1 380,00',status:'paid'},
+  {id:'F2026-0127',driver:'D3 · ABDOURAHIM Mohamed',         week:'S14',amount:'950,00', status:'paid'},
+  {id:'F2026-0126',driver:'D5 · AMINA Selemani',             week:'S14',amount:'1 320,00',status:'paid'},
 ];
 
 export const AUDIT = [
