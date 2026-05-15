@@ -18,7 +18,8 @@ export class PlanningService {
       .leftJoin('drivers', 'drivers.id', 'trips.driver_id')
       .leftJoin('clients', 'clients.id', 'trips.client_id')
       .select([
-        'trips.id', 'trips.scheduled_at', 'trips.estimated_arrival_at', 'trips.status', 'trips.stops_order', 'trips.amount', 'trips.notes',
+        'trips.id', 'trips.scheduled_at', 'trips.estimated_arrival_at', 'trips.status', 'trips.stops_order',
+        'trips.amount', 'trips.notes', 'trips.passenger_count', 'trips.is_unplanned', 'trips.direction',
         'drivers.id as driver_id', 'drivers.driver_number', 'drivers.full_name as driver_name',
         'clients.id as client_id', 'clients.name as client_name',
       ]);
@@ -50,14 +51,17 @@ export class PlanningService {
     const [trip] = await this.db
       .insertInto('trips')
       .values({
-        driver_id: dto.driver_id,
-        client_id: dto.client_id,
-        scheduled_at: new Date(dto.scheduled_at),
+        driver_id:            dto.driver_id,
+        client_id:            dto.client_id,
+        scheduled_at:         new Date(dto.scheduled_at),
         estimated_arrival_at: dto.estimated_arrival_at ? new Date(dto.estimated_arrival_at) : undefined,
-        stops_order: JSON.stringify(dto.stops_order ?? []),
-        amount: dto.amount,
-        notes: dto.notes,
-        created_by: createdBy,
+        stops_order:          JSON.stringify(dto.stops_order ?? []),
+        amount:               dto.amount,
+        notes:                dto.notes,
+        passenger_count:      dto.passenger_count,
+        is_unplanned:         dto.is_unplanned ?? false,
+        direction:            dto.direction as any,
+        created_by:           createdBy,
       })
       .returning(['id', 'scheduled_at', 'status'])
       .execute();

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsISO8601, IsNumber, IsArray, IsUUID, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, IsISO8601, IsNumber, IsArray, IsUUID, IsNotEmpty, IsBoolean, IsInt, Min } from 'class-validator';
 
 export class CreateTripDto {
   @IsUUID() @IsNotEmpty()
@@ -21,6 +21,15 @@ export class CreateTripDto {
 
   @IsOptional() @IsString()
   notes?: string;
+
+  @IsOptional() @IsInt() @Min(0)
+  passenger_count?: number;
+
+  @IsOptional() @IsBoolean()
+  is_unplanned?: boolean;
+
+  @IsOptional() @IsString()
+  direction?: string;
 }
 
 export class UpdateTripDto {
@@ -44,6 +53,15 @@ export class UpdateTripDto {
 
   @IsOptional() @IsString()
   notes?: string;
+
+  @IsOptional() @IsInt() @Min(0)
+  passenger_count?: number;
+
+  @IsOptional() @IsBoolean()
+  is_unplanned?: boolean;
+
+  @IsOptional() @IsString()
+  direction?: string;
 }
 
 export class ReplaceDriverDto {

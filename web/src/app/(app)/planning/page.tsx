@@ -209,6 +209,13 @@ function DbTripBar({ trip, dr, lineLabel, lineColor, containerRef, onBarClick, o
       <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', pointerEvents:'none', fontSize:10}}>
         {isUnplanned ? '⚠ Non planifié' : isPm ? dir.pm : dir.am} · {fmtH(start)}→{fmtH(end)}
       </span>
+      {trip.passenger_count > 0 && (
+        <span style={{flexShrink:0, fontSize:9, fontFamily:'var(--font-mono)', fontWeight:700, pointerEvents:'none',
+          background:'rgba(255,255,255,0.22)', borderRadius:3, padding:'1px 4px',
+          color: isPm ? lineColor : '#fff'}}>
+          {trip.passenger_count}✦
+        </span>
+      )}
       <button onClick={e => { e.stopPropagation(); onReplace(dr); }}
         title="Remplacer"
         style={{flexShrink:0,padding:'1px 5px',borderRadius:3,cursor:'pointer',lineHeight:1.2,
