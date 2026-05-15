@@ -1,6 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { logout, decodeToken, AuthUser } from '@/lib/auth';
+import Cookies from 'js-cookie';
 
 const NAV = [
   { href: '/dashboard',  label: 'Tableau de bord', icon: '⊞' },
@@ -16,6 +19,23 @@ const NAV = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    const token = Cookies.get('access_token');
+    if (token) setUser(decodeToken(token));
+  }, []);
+
+  async function handleLogout() {
+    await logout();
+    router.push('/login');
+  }
+
+  const initials = user?.full_name
+    ? user.full_name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
+    : 'TV';
+  const displayName = user?.full_name ?? 'Utilisateur';
 
   return (
     <aside className="sidebar">
@@ -76,14 +96,27 @@ export function Sidebar() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
           color: 'var(--text-2)', flexShrink: 0,
-        }}>MA</div>
-        <div>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>M. Aubin</div>
+        }}>{initials}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
           <div style={{ fontSize: 10.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }} />
             connecté
           </div>
         </div>
+        <button
+          onClick={handleLogout}
+          title="Se déconnecter"
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: '4px 5px', borderRadius: 5,
+            color: 'var(--text-3)', fontSize: 14, lineHeight: 1,
+            flexShrink: 0,
+            transition: 'color .15s, background .15s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--danger, #ef4444)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--red-50, #fef2f2)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+        >⏻</button>
       </div>
 
       {/* App chauffeur */}
