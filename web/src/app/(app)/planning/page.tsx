@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { L3, L4, CHM, HOURS, LINE_DIR, GANTT_START, GANTT_SPAN, Driver } from '@/lib/data';
 import { PageBar, Eyebrow, Pill, Btn, AlertBanner } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useDemoMode } from '@/lib/demo';
 
 const toPos = (h: number) => ((h - GANTT_START) / GANTT_SPAN) * 100;
 const parseTime = (s: string) => {
@@ -332,10 +333,8 @@ function GanttRow({ dr, lineLabel, lineColor, onReplace, onEdit, onBarClick, inc
             color: isReplaced ? '#9ca3af' : lineColor,
             padding:'0px 4px',border:`1.5px solid ${isReplaced ? '#d1d5db' : lineColor}`,
             borderRadius:3,letterSpacing:'.04em',
-            textDecoration: isReplaced ? 'line-through' : 'none',
           }}>{dr.code}</span>
-          <span style={{fontWeight:700,fontSize:12,color: isReplaced ? '#9ca3af' : 'var(--stroke)',
-            textDecoration: isReplaced ? 'line-through' : 'none'}}>{dr.nom}</span>
+          <span style={{fontWeight:700,fontSize:12,color: isReplaced ? '#9ca3af' : 'var(--stroke)'}}>{dr.nom}</span>
           {incident && !isReplaced && <span style={{fontSize:10,color:'var(--danger)',fontWeight:700}}>⚠</span>}
           {isReplaced && (
             <span style={{fontSize:9,fontFamily:'var(--font-mono)',fontWeight:700,
@@ -1418,10 +1417,11 @@ export default function PlanningPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = () => setRefreshKey(k => k + 1);
+  const { demo } = useDemoMode();
 
   // Charger les courses réelles pour la vue jour (pour récupérer les tripId sur clic barre)
   useEffect(() => {
-    if (viewMode !== 'jour') return;
+    if (viewMode !== 'jour' || demo) { setDayTripMap({}); return; }
     const isoDate = toISO(currentDate);
     Promise.all([api.get('/drivers'), api.get(`/planning?date=${isoDate}`)])
       .then(([drRes, trRes]) => {
@@ -1439,7 +1439,7 @@ export default function PlanningPage() {
         setDayTripMap(map);
       })
       .catch(() => {});
-  }, [viewMode, currentDate, refreshKey]);
+  }, [viewMode, currentDate, refreshKey, demo]);
 
   const handleConfirmReplace = async () => {
     if (!selectedDriverCode || !replaceTarget || replacing) return;

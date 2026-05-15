@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { L3, L4, CHM, DOCS, RIBS, TODAY_DOC, DAYS, LINE_DIR } from '@/lib/data';
+import { useDemoMode } from '@/lib/demo';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,7 +16,7 @@ interface ApiDriver {
   tax_id?: string;
   invoice_period?: 'weekly' | 'monthly';
   vehicle_seats?: number;
-  is_active: boolean;
+  active: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1124,7 +1125,12 @@ function EditDriverModal({ driver, onClose, onSaved }: {
       toast.success('Fiche mise à jour');
       onSaved(data);
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Erreur lors de la mise à jour');
+      const status = e.response?.status;
+      const msg = Array.isArray(e.response?.data?.message)
+        ? e.response.data.message.join(', ')
+        : (e.response?.data?.message || e.response?.data?.error || e.message || 'Erreur réseau');
+      console.error('[EditDriverModal] save failed:', status, e.response?.data, e);
+      toast.error(`Erreur${status ? ` ${status}` : ''} : ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -1281,6 +1287,7 @@ export default function DriversPage() {
     phone: (d as any).tel, is_active: true, invoice_period: 'weekly' as const,
   }));
 
+  const { demo } = useDemoMode();
   const [drivers, setDrivers] = useState<ApiDriver[]>(FALLBACK);
   const [loading, setLoading] = useState(false);
   const [selId, setSelId] = useState<string | null>(FALLBACK[0]?.id ?? null);
@@ -1293,14 +1300,21 @@ export default function DriversPage() {
   const [kpiLoading, setKpiLoading] = useState(false);
 
   useEffect(() => {
+    if (demo) {
+      setDrivers(FALLBACK);
+      setSelId(FALLBACK[0]?.id ?? null);
+      return;
+    }
+    setLoading(true);
     api.get('/drivers')
       .then(res => {
         const list: ApiDriver[] = res.data;
         setDrivers(list);
         if (list.length) setSelId(list[0].id);
       })
-      .catch(() => { /* garde le fallback initial */ });
-  }, []);
+      .catch(() => { /* garde le fallback initial */ })
+      .finally(() => setLoading(false));
+  }, [demo]);
 
   useEffect(() => {
     if (!selId) return;
@@ -1378,7 +1392,7 @@ export default function DriversPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '.12em',
               textTransform: 'uppercase', color: 'var(--text-3)', fontWeight: 700 }}>
-              Chauffeurs · {drivers.filter(d => d.is_active).length}
+              Chauffeurs · {drivers.filter(d => d.active).length}
             </span>
             <button className="btn btn-sm btn-accent" onClick={() => setShowAdd(true)}>
               + Ajouter
@@ -1412,7 +1426,7 @@ export default function DriversPage() {
                 padding: '10px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer',
                 background: active ? 'var(--surface-3)' : 'transparent',
                 borderLeft: active ? `3px solid ${c}` : '3px solid transparent',
-                opacity: d.is_active ? 1 : 0.45,
+                opacity: d.active ? 1 : 0.45,
               }}>
                 <div style={{ fontWeight: 600, fontSize: 12, display: 'flex', alignItems: 'center', gap: 7,
                   color: 'var(--text)' }}>
@@ -1426,7 +1440,7 @@ export default function DriversPage() {
                 <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, paddingLeft: 14 }}>
                   {loc ? (loc._l === 'L3' ? 'Ligne 3' : loc._l === 'L4' ? 'Ligne 4' : 'CHM') : '—'}
                   {d.phone ? ` · ${d.phone}` : ''}
-                  {!d.is_active && ' · désactivé'}
+                  {!d.active && ' · désactivé'}
                 </div>
               </div>
             );

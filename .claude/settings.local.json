@@ -13,7 +13,10 @@
       "Bash(rtk find *)",
       "Bash(rtk read *)",
       "Bash(npm install *)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(rtk next *)",
+      "Bash(node_modules\\\\.bin\\\\next build *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
     ]
   }
 }

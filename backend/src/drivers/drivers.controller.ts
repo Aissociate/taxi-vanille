@@ -119,6 +119,13 @@ export class DriversController {
     return this.service.declareOdometer(req.user.userId, dto);
   }
 
+  // Web : saisie kilométrage pour n'importe quel chauffeur (coordinateur / direction)
+  @Post(':id/mileage-override')
+  @Roles('direction', 'coordinator')
+  mileageOverride(@Param('id') driverId: string, @Body() dto: DeclareOdometerDto) {
+    return this.service.declareOdometer(driverId, dto);
+  }
+
   // ── Documents (stockage S3) ────────────────────────────────────────────────
 
   @Post(':id/documents/upload')

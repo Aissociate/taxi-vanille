@@ -41,6 +41,9 @@ export class UpdateDriverDto {
 
   @IsOptional() @IsEnum(['weekly', 'monthly'])
   invoice_period?: 'weekly' | 'monthly';
+
+  @IsOptional()
+  vehicle_seats?: number;
 }
 
 export class UpdateFcmTokenDto {

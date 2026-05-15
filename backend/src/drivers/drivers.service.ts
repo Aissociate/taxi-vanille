@@ -16,7 +16,7 @@ export class DriversService {
   async findAll(activeOnly = true) {
     let q = this.db
       .selectFrom('drivers')
-      .select(['id', 'driver_number', 'full_name', 'phone', 'active', 'invoice_period', 'created_at']);
+      .select(['id', 'driver_number', 'full_name', 'phone', 'active', 'invoice_period', 'vehicle_seats', 'created_at']);
     if (activeOnly) q = q.where('active', '=', true);
     return q.orderBy('driver_number').execute();
   }
@@ -58,7 +58,7 @@ export class DriversService {
       .updateTable('drivers')
       .set(updates)
       .where('id', '=', id)
-      .returning(['id', 'driver_number', 'full_name'])
+      .returning(['id', 'driver_number', 'full_name', 'phone', 'address', 'tax_id', 'invoice_period', 'vehicle_seats', 'active', 'created_at'])
       .execute();
     if (!driver) throw new NotFoundException('Chauffeur introuvable');
     return driver;
