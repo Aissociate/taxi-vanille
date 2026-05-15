@@ -12,7 +12,7 @@ CREATE TABLE client_reports (
   -- Période couverte par le rapport
   period_start     DATE        NOT NULL,
   period_end       DATE        NOT NULL,
-  month            CHAR(7)     GENERATED ALWAYS AS (to_char(period_start, 'YYYY-MM')) STORED,
+  month            CHAR(7)     GENERATED ALWAYS AS (lpad(extract(year from period_start)::int::text, 4, '0') || '-' || lpad(extract(month from period_start)::int::text, 2, '0')) STORED,
 
   -- Titre libre
   title            TEXT,
@@ -44,7 +44,7 @@ COMMENT ON TABLE client_reports IS
 
 CREATE TRIGGER trg_client_reports_updated_at
   BEFORE UPDATE ON client_reports
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE INDEX ON client_reports (client_id, month);
 CREATE INDEX ON client_reports (line_id);

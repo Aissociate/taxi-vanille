@@ -195,4 +195,5 @@ CREATE TRIGGER trg_trips_updated BEFORE UPDATE ON trips
 
 -- Données de départ
 INSERT INTO web_users (email, password_hash, full_name, role)
-VALUES ('admin@taxivanille.yt', '$2b$12$placeholder_change_on_first_login', 'Administrateur', 'direction');
+VALUES ('admin@taxivanille.yt', '$2b$12$L3QSe1RlNOfuDboyNEfcruCMnd1OUrc7rUPkELP6UlJvrbO0zvzHK', 'Administrateur', 'direction');
+-- Default password: admin123 (CHANGE ON FIRST LOGIN)

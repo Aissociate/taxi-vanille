@@ -66,7 +66,7 @@ CREATE TABLE client_lines (
 
 CREATE TRIGGER trg_client_lines_updated_at
   BEFORE UPDATE ON client_lines
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE INDEX ON client_lines (client_id);
 CREATE INDEX ON client_lines (client_id, active);
@@ -87,7 +87,7 @@ CREATE TABLE client_daily_stats (
   client_id        UUID        NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   line_id          UUID        REFERENCES client_lines(id)  ON DELETE CASCADE,
   date             DATE        NOT NULL,
-  month            CHAR(7)     GENERATED ALWAYS AS (to_char(date, 'YYYY-MM')) STORED,
+  month            CHAR(7)     GENERATED ALWAYS AS (lpad(extract(year from date)::int::text, 4, '0') || '-' || lpad(extract(month from date)::int::text, 2, '0')) STORED,
 
   -- Comptages passagers (jour entier)
   usagers          INTEGER,          -- total journée
@@ -118,7 +118,7 @@ CREATE TABLE client_daily_stats (
 
 CREATE TRIGGER trg_client_daily_stats_updated_at
   BEFORE UPDATE ON client_daily_stats
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE INDEX ON client_daily_stats (client_id, date);
 CREATE INDEX ON client_daily_stats (line_id, date);
