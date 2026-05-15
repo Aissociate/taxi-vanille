@@ -406,7 +406,7 @@ const loadDrivers = (setDrivers: (d: DbDriver[]) => void) =>
 function NouvelleCourseModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const today = new Date().toISOString().split('T')[0];
   const [form, setForm] = useState({
-    date: today, heure: '05:00', sens: 'AM', ligne: 'L3',
+    date: today, heure: '05:00', heure_arrivee: '', sens: 'AM', ligne: 'L3',
     driver_id: '', amount: '', notes: '',
     passenger_count: '', is_unplanned: false,
   });
@@ -431,16 +431,20 @@ function NouvelleCourseModal({ onClose, onCreated }: { onClose: () => void; onCr
     setSaving(true);
     try {
       const scheduled_at = new Date(`${form.date}T${form.heure}:00`).toISOString();
+      const estimated_arrival_at = form.heure_arrivee
+        ? new Date(`${form.date}T${form.heure_arrivee}:00`).toISOString()
+        : undefined;
       const notes = [form.ligne, form.sens, form.is_unplanned ? 'Non planifié' : '', form.notes]
         .filter(Boolean).join(' · ');
       await api.post('/planning', {
-        driver_id:       form.driver_id,
+        driver_id:            form.driver_id,
         scheduled_at,
-        amount:          form.amount ? parseFloat(form.amount) : undefined,
-        notes:           notes || undefined,
-        is_unplanned:    form.is_unplanned,
-        passenger_count: form.passenger_count ? parseInt(form.passenger_count) : undefined,
-        direction:       sensToDirMap[form.sens] || 'matin_aller',
+        estimated_arrival_at,
+        amount:               form.amount ? parseFloat(form.amount) : undefined,
+        notes:                notes || undefined,
+        is_unplanned:         form.is_unplanned,
+        passenger_count:      form.passenger_count ? parseInt(form.passenger_count) : undefined,
+        direction:            sensToDirMap[form.sens] || 'matin_aller',
       });
       toast.success(form.is_unplanned
         ? 'Trajet non planifié ajouté et chauffeur notifié'
@@ -549,16 +553,20 @@ function NouvelleCourseModal({ onClose, onCreated }: { onClose: () => void; onCr
             {errors.driver_id && <div style={{fontSize:10,color:'var(--danger)',marginTop:3}}>{errors.driver_id}</div>}
           </div>
 
-          {/* Date + Heure */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 130px',gap:12}}>
+          {/* Date + Heure départ + Heure arrivée */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 115px 115px',gap:12}}>
             <div>
               <label style={labelStyle}>Date <span style={{color:'var(--danger)'}}>*</span></label>
               <input type="date" value={form.date} onChange={e => set('date')(e.target.value)}
                 style={{...inputStyle, borderColor: errors.date ? 'var(--danger)' : 'var(--stroke3)'}}/>
             </div>
             <div>
-              <label style={labelStyle}>Heure de départ</label>
+              <label style={labelStyle}>Départ</label>
               <input type="time" value={form.heure} onChange={e => set('heure')(e.target.value)} style={inputStyle}/>
+            </div>
+            <div>
+              <label style={labelStyle}>Arrivée</label>
+              <input type="time" value={form.heure_arrivee} onChange={e => set('heure_arrivee')(e.target.value)} style={inputStyle}/>
             </div>
           </div>
 
@@ -600,7 +608,9 @@ function NouvelleCourseModal({ onClose, onCreated }: { onClose: () => void; onCr
               <span style={{width:8,height:8,borderRadius:'50%',background:ligne?.color,flexShrink:0}}/>
               <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,padding:'1px 6px',
                 border:`1.5px solid ${ligne?.color}`,color:ligne?.color,borderRadius:3}}>{form.ligne}</span>
-              <span style={{color:'var(--stroke2)'}}>{form.sens} · {form.date} · {form.heure}</span>
+              <span style={{color:'var(--stroke2)'}}>
+                {form.sens} · {form.date} · {form.heure}{form.heure_arrivee ? ` → ${form.heure_arrivee}` : ''}
+              </span>
               {form.is_unplanned && (
                 <span style={{fontSize:9,fontFamily:'var(--font-mono)',fontWeight:700,
                   padding:'1px 5px',borderRadius:3,background:'rgba(245,158,11,.15)',color:'#92400e',
@@ -646,6 +656,7 @@ function EditCourseModal({ tripId, prefill, onClose, onSaved }: {
     driver_id: prefill?.driver_id ?? '',
     date: prefill?.date ?? new Date().toISOString().split('T')[0],
     heure: prefill?.heure ?? '05:00',
+    heure_arrivee: '',
     sens: 'AM', ligne: 'L3',
     amount: '', notes: '',
     passenger_count: '', is_unplanned: false,
@@ -661,6 +672,7 @@ function EditCourseModal({ tripId, prefill, onClose, onSaved }: {
       api.get(`/planning/${tripId}`).then(r => {
         const t: DbTrip & { is_unplanned?: boolean; passenger_count?: number } = r.data;
         const d = new Date(t.scheduled_at);
+        const arr = (t as any).estimated_arrival_at ? new Date((t as any).estimated_arrival_at) : null;
         const notes = t.notes ?? '';
         const lignePart = LIGNES_OPTS.find(l => notes.includes(l.code));
         const isUnplanned = t.is_unplanned ?? notes.includes('Non planifié');
@@ -668,6 +680,7 @@ function EditCourseModal({ tripId, prefill, onClose, onSaved }: {
           driver_id: t.driver_id,
           date: toISO(d),
           heure: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`,
+          heure_arrivee: arr ? `${String(arr.getHours()).padStart(2,'0')}:${String(arr.getMinutes()).padStart(2,'0')}` : '',
           sens: notes.includes('Astreinte') ? 'Astreinte' : notes.includes('PM') ? 'PM' : notes.includes('Journée') ? 'Journée' : 'AM',
           ligne: lignePart?.code ?? 'L3',
           amount: t.amount ? String(t.amount) : '',
@@ -690,16 +703,20 @@ function EditCourseModal({ tripId, prefill, onClose, onSaved }: {
     setSaving(true);
     try {
       const scheduled_at = new Date(`${form.date}T${form.heure}:00`).toISOString();
+      const estimated_arrival_at = form.heure_arrivee
+        ? new Date(`${form.date}T${form.heure_arrivee}:00`).toISOString()
+        : undefined;
       const notes = [form.ligne, form.sens, form.is_unplanned ? 'Non planifié' : '', form.notes]
         .filter(Boolean).join(' · ');
       const payload = {
-        driver_id: form.driver_id,
+        driver_id:            form.driver_id,
         scheduled_at,
-        amount: form.amount ? parseFloat(form.amount) : undefined,
-        notes: notes || undefined,
-        is_unplanned:    form.is_unplanned,
-        passenger_count: form.passenger_count ? parseInt(form.passenger_count) : undefined,
-        direction:       sensToDirMap[form.sens] || 'matin_aller',
+        estimated_arrival_at,
+        amount:               form.amount ? parseFloat(form.amount) : undefined,
+        notes:                notes || undefined,
+        is_unplanned:         form.is_unplanned,
+        passenger_count:      form.passenger_count ? parseInt(form.passenger_count) : undefined,
+        direction:            sensToDirMap[form.sens] || 'matin_aller',
       };
       if (tripId) { await api.put(`/planning/${tripId}`, payload); toast.success('Course modifiée'); }
       else { await api.post('/planning', payload); toast.success('Course créée'); }
@@ -802,14 +819,18 @@ function EditCourseModal({ tripId, prefill, onClose, onSaved }: {
               {drivers.map(d => <option key={d.id} value={d.id}>{d.driver_number} · {d.full_name}</option>)}
             </select>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 130px',gap:12}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 115px 115px',gap:12}}>
             <div>
               <label style={labelStyle}>Date</label>
               <input type="date" value={form.date} onChange={e => set('date')(e.target.value)} style={inputStyle}/>
             </div>
             <div>
-              <label style={labelStyle}>Heure de départ</label>
+              <label style={labelStyle}>Départ</label>
               <input type="time" value={form.heure} onChange={e => set('heure')(e.target.value)} style={inputStyle}/>
+            </div>
+            <div>
+              <label style={labelStyle}>Arrivée</label>
+              <input type="time" value={form.heure_arrivee} onChange={e => set('heure_arrivee')(e.target.value)} style={inputStyle}/>
             </div>
           </div>
           {/* Montant + Passagers + Notes */}
@@ -845,7 +866,9 @@ function EditCourseModal({ tripId, prefill, onClose, onSaved }: {
               <span style={{width:8,height:8,borderRadius:'50%',background:ligne?.color,flexShrink:0}}/>
               <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:700,padding:'1px 6px',
                 border:`1.5px solid ${ligne?.color}`,color:ligne?.color,borderRadius:3}}>{form.ligne}</span>
-              <span style={{color:'var(--stroke2)'}}>{form.sens} · {form.date} · {form.heure}</span>
+              <span style={{color:'var(--stroke2)'}}>
+                {form.sens} · {form.date} · {form.heure}{form.heure_arrivee ? ` → ${form.heure_arrivee}` : ''}
+              </span>
               {form.is_unplanned && (
                 <span style={{fontSize:9,fontFamily:'var(--font-mono)',fontWeight:700,
                   padding:'1px 5px',borderRadius:3,background:'rgba(245,158,11,.15)',color:'#92400e',

@@ -10,6 +10,9 @@ export class CreateTripDto {
   @IsISO8601()
   scheduled_at: string;
 
+  @IsOptional() @IsISO8601()
+  estimated_arrival_at?: string;
+
   @IsOptional() @IsArray()
   stops_order?: string[];
 
@@ -29,6 +32,9 @@ export class UpdateTripDto {
 
   @IsOptional() @IsISO8601()
   scheduled_at?: string;
+
+  @IsOptional() @IsISO8601()
+  estimated_arrival_at?: string;
 
   @IsOptional() @IsArray()
   stops_order?: string[];

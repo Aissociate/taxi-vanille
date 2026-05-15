@@ -18,7 +18,7 @@ export class PlanningService {
       .leftJoin('drivers', 'drivers.id', 'trips.driver_id')
       .leftJoin('clients', 'clients.id', 'trips.client_id')
       .select([
-        'trips.id', 'trips.scheduled_at', 'trips.status', 'trips.stops_order', 'trips.amount', 'trips.notes',
+        'trips.id', 'trips.scheduled_at', 'trips.estimated_arrival_at', 'trips.status', 'trips.stops_order', 'trips.amount', 'trips.notes',
         'drivers.id as driver_id', 'drivers.driver_number', 'drivers.full_name as driver_name',
         'clients.id as client_id', 'clients.name as client_name',
       ]);
@@ -53,6 +53,7 @@ export class PlanningService {
         driver_id: dto.driver_id,
         client_id: dto.client_id,
         scheduled_at: new Date(dto.scheduled_at),
+        estimated_arrival_at: dto.estimated_arrival_at ? new Date(dto.estimated_arrival_at) : undefined,
         stops_order: JSON.stringify(dto.stops_order ?? []),
         amount: dto.amount,
         notes: dto.notes,
@@ -70,7 +71,7 @@ export class PlanningService {
     const before = await this.findOne(id);
     const [trip] = await this.db
       .updateTable('trips')
-      .set({ ...dto, scheduled_at: dto.scheduled_at ? new Date(dto.scheduled_at) : undefined, stops_order: dto.stops_order ? JSON.stringify(dto.stops_order) : undefined } as any)
+      .set({ ...dto, scheduled_at: dto.scheduled_at ? new Date(dto.scheduled_at) : undefined, estimated_arrival_at: dto.estimated_arrival_at ? new Date(dto.estimated_arrival_at) : undefined, stops_order: dto.stops_order ? JSON.stringify(dto.stops_order) : undefined } as any)
       .where('id', '=', id)
       .returning(['id', 'status', 'scheduled_at'])
       .execute();
