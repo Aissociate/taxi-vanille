@@ -119,14 +119,15 @@ function CourseDetailPopup({ detail, onClose, onEdit, onDelete }: {
 
 interface Replacement { oldCode: string; newCode: string; oldDr: DriverExt; }
 
-function GanttRow({ dr, lineLabel, lineColor, onReplace, onEdit, onBarClick, incident, replacedBy, replacing }: {
+function GanttRow({ dr, lineLabel, lineColor, onReplace, onEdit, onBarClick, incident, replacedBy, replacing, dbTrips }: {
   dr: DriverExt; lineLabel: string; lineColor: string;
   onReplace: (d: DriverExt) => void;
   onEdit?: (d: DriverExt) => void;
   onBarClick?: (detail: BarDetail) => void;
   incident?: boolean;
-  replacedBy?: string;                                        // code du remplaçant
-  replacing?: Array<{ code: string; am?: string; pm?: string }>; // courses héritées
+  replacedBy?: string;
+  replacing?: Array<{ code: string; am?: string; pm?: string }>;
+  dbTrips?: any[]; // Trajets réels depuis la DB
 }) {
   const amParts = (dr.am||'').split('-');
   const pmParts = (dr.pm||'').split('-');
@@ -271,8 +272,50 @@ function GanttRow({ dr, lineLabel, lineColor, onReplace, onEdit, onBarClick, inc
           );
         })}
 
-        {/* ── Barre AM (ou journée) ── */}
-        {amS != null && amE != null && (
+        {/* ── Barres depuis la DB (trajets réels créés via le planning) ── */}
+        {dbTrips && dbTrips.length > 0 && dbTrips.map((t: any, ti: number) => {
+          const depDate = new Date(t.scheduled_at);
+          const s = depDate.getHours() + depDate.getMinutes() / 60;
+          const arrDate = t.estimated_arrival_at ? new Date(t.estimated_arrival_at) : null;
+          const e = arrDate ? arrDate.getHours() + arrDate.getMinutes() / 60 : s + 1.5;
+          if (s < GANTT_START || e <= s) return null;
+          const notes = t.notes || '';
+          const isPm = notes.includes('PM') && !notes.includes('Journée');
+          const isUnplanned = t.is_unplanned || notes.includes('Non planifié');
+          const barLabel = `${fmtH(s)}→${fmtH(e)}`;
+          return (
+            <div key={`db-${ti}`}
+              className="gantt-bar"
+              style={{
+                left:`${toPos(s)}%`, width:`${Math.max(toPos(e)-toPos(s), 2)}%`,
+                background: isUnplanned
+                  ? 'repeating-linear-gradient(45deg,rgba(245,158,11,0.9),rgba(245,158,11,0.9) 4px,rgba(180,83,9,0.7) 4px,rgba(180,83,9,0.7) 10px)'
+                  : isPm ? `${lineColor}22` : lineColor,
+                border: isPm || isUnplanned ? `1.5px solid ${isUnplanned ? '#d97706' : lineColor}` : 'none',
+                color: isPm ? lineColor : isUnplanned ? '#92400e' : '#fff',
+                display:'flex', alignItems:'center', gap:4,
+                cursor:'pointer', overflow:'hidden', zIndex:2,
+              }}
+              onClick={e2 => {
+                onBarClick?.({ dr, bar: isPm ? 'pm' : 'am', start: s, end: e,
+                  rect: e2.currentTarget.getBoundingClientRect(), lineColor, lineLabel, tripId: t.id });
+              }}>
+              <span style={{fontSize:9, opacity:.8, flexShrink:0}}>{isUnplanned ? '⚠' : '▶'}</span>
+              <span style={{fontSize:10, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', pointerEvents:'none'}}>
+                {barLabel}
+              </span>
+              <button onClick={e2 => { e2.stopPropagation(); onReplace(dr); }}
+                title="Remplacer"
+                style={{flexShrink:0,padding:'1px 5px',borderRadius:3,cursor:'pointer',lineHeight:1.2,
+                  fontSize:10,fontWeight:700,marginLeft:'auto',
+                  background:'rgba(255,255,255,0.18)',border:'1px solid rgba(255,255,255,0.45)',
+                  color: isPm ? lineColor : '#fff'}}>⇄</button>
+            </div>
+          );
+        })}
+
+        {/* ── Barre AM (ou journée) — planning théorique, masqué si trajets DB présents ── */}
+        {(!dbTrips || dbTrips.length === 0) && amS != null && amE != null && (
           <div className="gantt-bar"
             style={{left:`${toPos(amS)}%`,width:`${toPos(amE)-toPos(amS)}%`,
               background: isReplaced ? '#d1d5db' : incident ? 'var(--warn)' : lineColor,
@@ -296,8 +339,8 @@ function GanttRow({ dr, lineLabel, lineColor, onReplace, onEdit, onBarClick, inc
           </div>
         )}
 
-        {/* ── Barre PM ── */}
-        {pmS != null && pmE != null && (
+        {/* ── Barre PM — planning théorique, masqué si trajets DB présents ── */}
+        {(!dbTrips || dbTrips.length === 0) && pmS != null && pmE != null && (
           <div className="gantt-bar"
             style={{left:`${toPos(pmS)}%`,width:`${toPos(pmE)-toPos(pmS)}%`,
               background: isReplaced ? 'rgba(209,213,219,.2)' : `${lineColor}22`,
@@ -1312,7 +1355,7 @@ export default function PlanningPage() {
         setDayTripMap(map);
       })
       .catch(() => {});
-  }, [viewMode, currentDate]);
+  }, [viewMode, currentDate, refreshKey]);
 
   const handleConfirmReplace = async () => {
     if (!selectedDriverCode || !replaceTarget || replacing) return;
@@ -1570,12 +1613,15 @@ export default function PlanningPage() {
                   .map(r => ({ code: r.oldCode, am: r.oldDr.am, pm: r.oldDr.pm }));
                 return (
                   <GanttRow key={dr.code} dr={dr} lineLabel={l} lineColor={lineColor}
+                    dbTrips={dayTripMap[dr.code]}
                     onReplace={setReplaceTarget}
                     onEdit={dr => {
                       const trips = dayTripMap[dr.code] || [];
                       setEditCell({ dr, date: currentDate, tripId: trips[0]?.id });
                     }}
                     onBarClick={detail => {
+                      // Si le clic vient d'une barre DB, tripId est déjà dans detail
+                      if (detail.tripId) { setBarDetail(detail); return; }
                       const trips = dayTripMap[detail.dr.code] || [];
                       const matched = trips.find((t: any) => {
                         const h = new Date(t.scheduled_at).getHours() + new Date(t.scheduled_at).getMinutes() / 60;
