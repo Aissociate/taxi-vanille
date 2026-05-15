@@ -119,6 +119,113 @@ function CourseDetailPopup({ detail, onClose, onEdit, onDelete }: {
 
 interface Replacement { oldCode: string; newCode: string; oldDr: DriverExt; }
 
+function DbTripBar({ trip, dr, lineLabel, lineColor, containerRef, onBarClick, onReplace }: {
+  trip: any; dr: DriverExt; lineLabel: string; lineColor: string;
+  containerRef: React.RefObject<HTMLDivElement>;
+  onBarClick?: (d: BarDetail) => void;
+  onReplace: (d: DriverExt) => void;
+}) {
+  const depDate = new Date(trip.scheduled_at);
+  const s0 = depDate.getHours() + depDate.getMinutes() / 60;
+  const arrDate = trip.estimated_arrival_at ? new Date(trip.estimated_arrival_at) : null;
+  const e0 = arrDate ? arrDate.getHours() + arrDate.getMinutes() / 60 : s0 + 1.5;
+
+  const [start, setStart] = useState(s0);
+  const [end, setEnd]     = useState(e0);
+  const dragging = useRef(false);
+
+  const notes       = trip.notes || '';
+  const isPm        = notes.includes('PM') && !notes.includes('Journée');
+  const isUnplanned = trip.is_unplanned || notes.includes('Non planifié');
+  const dir         = LINE_DIR[lineLabel] || { am: 'AM →', pm: 'PM ←', route: lineLabel };
+
+  const startRef = useRef(start);
+  const endRef   = useRef(end);
+  startRef.current = start;
+  endRef.current   = end;
+
+  const saveToDb = () => {
+    const date = new Date(trip.scheduled_at).toISOString().split('T')[0];
+    const toISO8601 = (h: number) => {
+      const hrs = Math.floor(h), mins = Math.round((h % 1) * 60);
+      return new Date(`${date}T${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:00`).toISOString();
+    };
+    api.put(`/planning/${trip.id}`, {
+      scheduled_at:         toISO8601(startRef.current),
+      estimated_arrival_at: toISO8601(endRef.current),
+    }).catch(() => {});
+  };
+
+  const startDragDb = (e: React.MouseEvent, setter: (v: number) => void, minH: number, maxH: number) => {
+    e.preventDefault(); e.stopPropagation();
+    dragging.current = true;
+    const container = containerRef.current;
+    if (!container) return;
+    const cRect = container.getBoundingClientRect();
+    const onMove = (me: MouseEvent) => {
+      const ratio = Math.max(0, Math.min(1, (me.clientX - cRect.left) / cRect.width));
+      const h = GANTT_START + ratio * GANTT_SPAN;
+      setter(Math.max(minH, Math.min(maxH, Math.round(h * 4) / 4)));
+    };
+    const onUp = () => {
+      dragging.current = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      saveToDb();
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  const w = Math.max(toPos(end) - toPos(start), 1.5);
+
+  return (
+    <div className="gantt-bar"
+      style={{
+        left: `${toPos(start)}%`, width: `${w}%`,
+        background: isUnplanned
+          ? 'repeating-linear-gradient(45deg,rgba(245,158,11,.9),rgba(245,158,11,.9) 4px,rgba(180,83,9,.75) 4px,rgba(180,83,9,.75) 10px)'
+          : isPm ? `${lineColor}22` : lineColor,
+        border: (isPm || isUnplanned) ? `1.5px solid ${isUnplanned ? '#d97706' : lineColor}` : 'none',
+        color: isPm ? lineColor : isUnplanned ? '#92400e' : '#fff',
+        display: 'flex', alignItems: 'center', gap: 4,
+        cursor: 'pointer', overflow: 'visible', zIndex: 2,
+      }}
+      onClick={ev => {
+        if (dragging.current) return;
+        onBarClick?.({ dr, bar: isPm ? 'pm' : 'am', start, end,
+          rect: ev.currentTarget.getBoundingClientRect(), lineColor, lineLabel, tripId: trip.id });
+      }}>
+      {/* Handle gauche */}
+      <div onMouseDown={e => startDragDb(e, setStart, GANTT_START, end - 0.25)}
+        onClick={e => e.stopPropagation()}
+        style={{position:'absolute',top:0,bottom:0,left:0,width:10,cursor:'ew-resize',zIndex:4,
+          display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{width:2,height:'60%',background:'rgba(255,255,255,0.5)',borderRadius:1}}/>
+      </div>
+      <span style={{opacity:.7, fontSize:9, flexShrink:0, pointerEvents:'none'}}>
+        {isUnplanned ? '⚠' : '▶'}
+      </span>
+      <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', pointerEvents:'none', fontSize:10}}>
+        {isUnplanned ? '⚠ Non planifié' : isPm ? dir.pm : dir.am} · {fmtH(start)}→{fmtH(end)}
+      </span>
+      <button onClick={e => { e.stopPropagation(); onReplace(dr); }}
+        title="Remplacer"
+        style={{flexShrink:0,padding:'1px 5px',borderRadius:3,cursor:'pointer',lineHeight:1.2,
+          fontSize:10,fontWeight:700,marginLeft:'auto',
+          background:'rgba(255,255,255,0.18)',border:'1px solid rgba(255,255,255,0.45)',
+          color: isPm ? lineColor : '#fff'}}>⇄</button>
+      {/* Handle droit */}
+      <div onMouseDown={e => startDragDb(e, setEnd, start + 0.25, GANTT_START + GANTT_SPAN)}
+        onClick={e => e.stopPropagation()}
+        style={{position:'absolute',top:0,bottom:0,right:0,width:10,cursor:'ew-resize',zIndex:4,
+          display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{width:2,height:'60%',background:'rgba(255,255,255,0.5)',borderRadius:1}}/>
+      </div>
+    </div>
+  );
+}
+
 function GanttRow({ dr, lineLabel, lineColor, onReplace, onEdit, onBarClick, incident, replacedBy, replacing, dbTrips }: {
   dr: DriverExt; lineLabel: string; lineColor: string;
   onReplace: (d: DriverExt) => void;
@@ -272,47 +379,12 @@ function GanttRow({ dr, lineLabel, lineColor, onReplace, onEdit, onBarClick, inc
           );
         })}
 
-        {/* ── Barres depuis la DB (trajets réels créés via le planning) ── */}
-        {dbTrips && dbTrips.length > 0 && dbTrips.map((t: any, ti: number) => {
-          const depDate = new Date(t.scheduled_at);
-          const s = depDate.getHours() + depDate.getMinutes() / 60;
-          const arrDate = t.estimated_arrival_at ? new Date(t.estimated_arrival_at) : null;
-          const e = arrDate ? arrDate.getHours() + arrDate.getMinutes() / 60 : s + 1.5;
-          if (s < GANTT_START || e <= s) return null;
-          const notes = t.notes || '';
-          const isPm = notes.includes('PM') && !notes.includes('Journée');
-          const isUnplanned = t.is_unplanned || notes.includes('Non planifié');
-          const barLabel = `${fmtH(s)}→${fmtH(e)}`;
-          return (
-            <div key={`db-${ti}`}
-              className="gantt-bar"
-              style={{
-                left:`${toPos(s)}%`, width:`${Math.max(toPos(e)-toPos(s), 2)}%`,
-                background: isUnplanned
-                  ? 'repeating-linear-gradient(45deg,rgba(245,158,11,0.9),rgba(245,158,11,0.9) 4px,rgba(180,83,9,0.7) 4px,rgba(180,83,9,0.7) 10px)'
-                  : isPm ? `${lineColor}22` : lineColor,
-                border: isPm || isUnplanned ? `1.5px solid ${isUnplanned ? '#d97706' : lineColor}` : 'none',
-                color: isPm ? lineColor : isUnplanned ? '#92400e' : '#fff',
-                display:'flex', alignItems:'center', gap:4,
-                cursor:'pointer', overflow:'hidden', zIndex:2,
-              }}
-              onClick={e2 => {
-                onBarClick?.({ dr, bar: isPm ? 'pm' : 'am', start: s, end: e,
-                  rect: e2.currentTarget.getBoundingClientRect(), lineColor, lineLabel, tripId: t.id });
-              }}>
-              <span style={{fontSize:9, opacity:.8, flexShrink:0}}>{isUnplanned ? '⚠' : '▶'}</span>
-              <span style={{fontSize:10, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', pointerEvents:'none'}}>
-                {barLabel}
-              </span>
-              <button onClick={e2 => { e2.stopPropagation(); onReplace(dr); }}
-                title="Remplacer"
-                style={{flexShrink:0,padding:'1px 5px',borderRadius:3,cursor:'pointer',lineHeight:1.2,
-                  fontSize:10,fontWeight:700,marginLeft:'auto',
-                  background:'rgba(255,255,255,0.18)',border:'1px solid rgba(255,255,255,0.45)',
-                  color: isPm ? lineColor : '#fff'}}>⇄</button>
-            </div>
-          );
-        })}
+        {/* ── Barres depuis la DB (trajets réels) ── */}
+        {dbTrips && dbTrips.length > 0 && dbTrips.map((t: any, ti: number) => (
+          <DbTripBar key={`db-${ti}`} trip={t} dr={dr}
+            lineLabel={lineLabel} lineColor={lineColor} containerRef={containerRef}
+            onBarClick={onBarClick} onReplace={onReplace} />
+        ))}
 
         {/* ── Barre AM (ou journée) — planning théorique, masqué si trajets DB présents ── */}
         {(!dbTrips || dbTrips.length === 0) && amS != null && amE != null && (
