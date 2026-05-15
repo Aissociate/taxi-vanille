@@ -901,8 +901,8 @@ function getDaySchedule(dr: DriverExt, dayOfWeek: number): { am?: string; pm?: s
   return { am: dr.am, pm: dr.pm, astr: dr.astr };
 }
 
-function WeekGridView({ currentDate, ligne, onEditCell }: {
-  currentDate: Date; ligne: string; onEditCell: (dr: DriverExt, date: Date, tripId?: string) => void;
+function WeekGridView({ currentDate, ligne, refreshKey, onEditCell }: {
+  currentDate: Date; ligne: string; refreshKey?: number; onEditCell: (dr: DriverExt, date: Date, tripId?: string) => void;
 }) {
   const mon = startOfWeek(currentDate);
   const monISO = toISO(mon);
@@ -948,7 +948,7 @@ function WeekGridView({ currentDate, ligne, onEditCell }: {
     setApiReady(false);
     load();
     return () => { cancelled = true; };
-  }, [monISO]);
+  }, [monISO, refreshKey]);
 
   const allDrivers: DriverExt[] = [
     ...L3.map(d => ({...d, _ligne:'L3', _color:'var(--brand)'})),
@@ -1289,6 +1289,8 @@ export default function PlanningPage() {
   const [replacing, setReplacing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('semaine');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refresh = () => setRefreshKey(k => k + 1);
 
   // Charger les courses réelles pour la vue jour (pour récupérer les tripId sur clic barre)
   useEffect(() => {
@@ -1364,7 +1366,7 @@ export default function PlanningPage() {
   return (
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {showNewCourse && (
-        <NouvelleCourseModal onClose={() => setShowNewCourse(false)} onCreated={() => {}}/>
+        <NouvelleCourseModal onClose={() => setShowNewCourse(false)} onCreated={() => { setShowNewCourse(false); refresh(); }}/>
       )}
       {showDuplicate && (
         <DupliquerModal mode={viewMode} currentDate={currentDate} onClose={() => setShowDuplicate(false)}/>
@@ -1414,7 +1416,7 @@ export default function PlanningPage() {
             heure: editCell.dr.am ? editCell.dr.am.split('-')[0].padEnd(5,'0') : '05:00',
           }}
           onClose={() => setEditCell(null)}
-          onSaved={() => setEditCell(null)}
+          onSaved={() => { setEditCell(null); refresh(); }}
         />
       )}
       {showAlert && (
@@ -1521,7 +1523,7 @@ export default function PlanningPage() {
       {viewMode === 'mois' ? (
         <MonthView currentDate={currentDate} onDayClick={(d) => { setCurrentDate(d); setViewMode('jour'); }}/>
       ) : viewMode === 'semaine' ? (
-        <WeekGridView currentDate={currentDate} ligne={ligne}
+        <WeekGridView currentDate={currentDate} ligne={ligne} refreshKey={refreshKey}
           onEditCell={(dr, date, tripId) => setEditCell({ dr, date, tripId })}/>
       ) : (
       <div className="scroll" style={{background:'var(--paper)'}}>
