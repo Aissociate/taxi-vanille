@@ -1,8 +1,8 @@
 'use client';
 import React from 'react';
 
-export const Eyebrow = ({children, color}: {children: React.ReactNode; color?: string}) => (
-  <div className="eyebrow" style={color ? {color} : {}}>{children}</div>
+export const Eyebrow = ({children, color, style}: {children: React.ReactNode; color?: string; style?: React.CSSProperties}) => (
+  <div className="eyebrow" style={{ ...(color ? {color} : {}), ...style }}>{children}</div>
 );
 
 export const Pill = ({children, variant='', dot}: {children: React.ReactNode; variant?: string; dot?: boolean}) => (
