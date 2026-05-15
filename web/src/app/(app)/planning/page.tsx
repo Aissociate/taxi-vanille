@@ -119,11 +119,12 @@ function CourseDetailPopup({ detail, onClose, onEdit, onDelete }: {
 
 interface Replacement { oldCode: string; newCode: string; oldDr: DriverExt; }
 
-function DbTripBar({ trip, dr, lineLabel, lineColor, containerRef, onBarClick, onReplace }: {
+function DbTripBar({ trip, dr, lineLabel, lineColor, containerRef, onBarClick, onReplace, isReplaced }: {
   trip: any; dr: DriverExt; lineLabel: string; lineColor: string;
   containerRef: React.RefObject<HTMLDivElement>;
   onBarClick?: (d: BarDetail) => void;
   onReplace: (d: DriverExt) => void;
+  isReplaced?: boolean;
 }) {
   const depDate = new Date(trip.scheduled_at);
   const s0 = depDate.getHours() + depDate.getMinutes() / 60;
@@ -183,13 +184,16 @@ function DbTripBar({ trip, dr, lineLabel, lineColor, containerRef, onBarClick, o
     <div className="gantt-bar"
       style={{
         left: `${toPos(start)}%`, width: `${w}%`,
-        background: isUnplanned
-          ? 'repeating-linear-gradient(45deg,rgba(245,158,11,.9),rgba(245,158,11,.9) 4px,rgba(180,83,9,.75) 4px,rgba(180,83,9,.75) 10px)'
-          : isPm ? `${lineColor}22` : lineColor,
-        border: (isPm || isUnplanned) ? `1.5px solid ${isUnplanned ? '#d97706' : lineColor}` : 'none',
-        color: isPm ? lineColor : isUnplanned ? '#92400e' : '#fff',
+        background: isReplaced ? '#d1d5db'
+          : isUnplanned
+            ? 'repeating-linear-gradient(45deg,rgba(245,158,11,.9),rgba(245,158,11,.9) 4px,rgba(180,83,9,.75) 4px,rgba(180,83,9,.75) 10px)'
+            : isPm ? `${lineColor}22` : lineColor,
+        border: isReplaced ? '1.5px solid #9ca3af'
+          : (isPm || isUnplanned) ? `1.5px solid ${isUnplanned ? '#d97706' : lineColor}` : 'none',
+        color: isReplaced ? '#6b7280' : isPm ? lineColor : isUnplanned ? '#92400e' : '#fff',
         display: 'flex', alignItems: 'center', gap: 4,
-        cursor: 'pointer', overflow: 'visible', zIndex: 2,
+        cursor: isReplaced ? 'default' : 'pointer', overflow: 'visible', zIndex: 2,
+        opacity: isReplaced ? 0.6 : 1,
       }}
       onClick={ev => {
         if (dragging.current) return;
@@ -204,9 +208,10 @@ function DbTripBar({ trip, dr, lineLabel, lineColor, containerRef, onBarClick, o
         <div style={{width:2,height:'60%',background:'rgba(255,255,255,0.5)',borderRadius:1}}/>
       </div>
       <span style={{opacity:.7, fontSize:9, flexShrink:0, pointerEvents:'none'}}>
-        {isUnplanned ? '⚠' : '▶'}
+        {isReplaced ? '✕' : isUnplanned ? '⚠' : '▶'}
       </span>
-      <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', pointerEvents:'none', fontSize:10}}>
+      <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', pointerEvents:'none', fontSize:10,
+        textDecoration: isReplaced ? 'line-through' : 'none'}}>
         {isUnplanned ? '⚠ Non planifié' : isPm ? dir.pm : dir.am} · {fmtH(start)}→{fmtH(end)}
       </span>
       {trip.passenger_count > 0 && (
@@ -390,7 +395,7 @@ function GanttRow({ dr, lineLabel, lineColor, onReplace, onEdit, onBarClick, inc
         {dbTrips && dbTrips.length > 0 && dbTrips.map((t: any, ti: number) => (
           <DbTripBar key={`db-${ti}`} trip={t} dr={dr}
             lineLabel={lineLabel} lineColor={lineColor} containerRef={containerRef}
-            onBarClick={onBarClick} onReplace={onReplace} />
+            onBarClick={onBarClick} onReplace={onReplace} isReplaced={isReplaced} />
         ))}
 
         {/* ── Barre AM (ou journée) — planning théorique, masqué si trajets DB présents ── */}
@@ -444,8 +449,8 @@ function GanttRow({ dr, lineLabel, lineColor, onReplace, onEdit, onBarClick, inc
           </div>
         )}
 
-        {/* ── Barres héritées (courses reprises d'un autre chauffeur) ── */}
-        {replacing && replacing.map((src, ri) => {
+        {/* ── Barres héritées (courses reprises d'un autre chauffeur) — masqué si trajets DB présents ── */}
+        {(!dbTrips || dbTrips.length === 0) && replacing && replacing.map((src, ri) => {
           const srcAmParts = (src.am||'').split('-');
           const srcPmParts = (src.pm||'').split('-');
           const sAmS = parseTime(srcAmParts[0]||'');
@@ -1458,12 +1463,12 @@ export default function PlanningPage() {
           api.put(`/planning/${t.id}/driver`, { driver_id: newDriver.id, reason: 'Remplacement coordinateur' })
         ));
         toast.success(`${replaceTarget.code} → ${selectedDriverCode} : ${driverTrips.length} course(s) réaffectée(s)`);
-        // Mémoriser le remplacement pour l'affichage visuel (Gantt)
         setReplacements(prev => [...prev, {
           oldCode: replaceTarget.code,
           newCode: selectedDriverCode,
           oldDr:   replaceTarget,
         }]);
+        refresh(); // recharger le planning avec les vraies données DB
       }
       setReplaceTarget(null);
       setSelectedDriverCode('');
