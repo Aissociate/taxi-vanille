@@ -89,7 +89,7 @@ export class AuthService {
       .execute();
   }
 
-  private async issueTokens(payload: object & { sub: string; type: string }) {
+  private async issueTokens(payload: { sub: string; type: string; role?: string } & Record<string, any>) {
     const accessToken = this.jwt.sign(payload, { expiresIn: '15m' });
     const refreshRaw = randomBytes(40).toString('hex');
     const refreshHash = createHash('sha256').update(refreshRaw).digest('hex');

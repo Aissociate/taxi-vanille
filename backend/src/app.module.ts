@@ -11,6 +11,7 @@ import { GpsModule } from './gps/gps.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { KpiModule } from './kpi/kpi.module';
 import { ClientsModule } from './clients/clients.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ClientsModule } from './clients/clients.module';
     InvoicesModule,
     KpiModule,
     ClientsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

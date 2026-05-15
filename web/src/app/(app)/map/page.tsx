@@ -1,120 +1,371 @@
 'use client';
-import { useState } from 'react';
-import { Eyebrow, Btn, MapBg, TaxiPin } from '@/components/ui';
+import { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { io, Socket } from 'socket.io-client';
+import Cookies from 'js-cookie';
+import { L3, L4, CHM } from '@/lib/data';
+import { GpsPing, getPingStatus, STATUS_COLOR } from '@/lib/gpsUtils';
+
+const LeafletMap = dynamic(() => import('@/components/LeafletMap'), {
+  ssr: false,
+  loading: () => (
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f4f3' }}>
+      <div style={{ textAlign: 'center', color: '#9ca3af' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>◉</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '.1em' }}>CHARGEMENT CARTE…</div>
+      </div>
+    </div>
+  ),
+});
+
+// ── Positions démo (fallback sans WebSocket) ──────────────────────────────────
+
+const now = () => new Date().toISOString();
+const ago = (mn: number) => new Date(Date.now() - mn * 60000).toISOString();
+
+const DEMO_POSITIONS: GpsPing[] = [
+  { driver_id: 'D1',  driver_number: 'D1',  driver_name: 'MOHAMED Ali',       lat: -12.835, lng: 45.220, recorded_at: ago(1),  ligne: 'L3' },
+  { driver_id: 'D2',  driver_number: 'D2',  driver_name: 'BARAKA Soumaïla',   lat: -12.812, lng: 45.222, recorded_at: ago(2),  ligne: 'L3' },
+  { driver_id: 'D5',  driver_number: 'D5',  driver_name: 'AMINA Selemani',    lat: -12.793, lng: 45.223, recorded_at: ago(3),  ligne: 'L3' },
+  { driver_id: 'D7',  driver_number: 'D7',  driver_name: 'COMBO Said',        lat: -12.803, lng: 45.219, recorded_at: ago(10), ligne: 'L3' },
+  { driver_id: 'D12', driver_number: 'D12', driver_name: 'KAMARDINE Mansour', lat: -12.762, lng: 45.218, recorded_at: ago(28), ligne: 'L3' },
+  { driver_id: 'C5',  driver_number: 'C5',  driver_name: 'ANRABE Hamada',     lat: -12.945, lng: 45.200, recorded_at: ago(4),  ligne: 'CHM' },
+  { driver_id: 'C14', driver_number: 'C14', driver_name: 'VELOU M\'COLO',     lat: -12.963, lng: 45.193, recorded_at: ago(2),  ligne: 'CHM' },
+  { driver_id: 'L4A', driver_number: 'L4A', driver_name: 'MOUDJIB Saïd',      lat: -12.930, lng: 45.208, recorded_at: ago(1),  ligne: 'L4' },
+];
+
+// ── Roster complet (pour le panneau) ─────────────────────────────────────────
+
+const ROSTER = [
+  ...L3.map(d => ({ ...d, ligne: 'L3', color: '#E8601A' })),
+  ...L4.map(d => ({ ...d, ligne: 'L4', color: '#2563eb' })),
+  ...CHM.map(d => ({ ...d, ligne: 'CHM', color: '#16a34a' })),
+];
+
+const LINE_OPTS = ['Tous', 'L3', 'L4', 'CHM'] as const;
+
+// ── Helper affichage ──────────────────────────────────────────────────────────
+
+function fmtAge(iso: string) {
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return 'à l\'instant';
+  if (m < 60) return `${m} mn`;
+  return `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, '0') : ''}`;
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function MapPage() {
-  const [replayMode, setReplayMode] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [positions, setPositions] = useState<Record<string, GpsPing>>({});
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [lineFilter, setLineFilter] = useState<string>('Tous');
+  const [showRoutes, setShowRoutes] = useState(true);
+  const [dark, setDark] = useState(false);
+  const [tick, setTick] = useState(0);
+  const socketRef = useRef<Socket | null>(null);
+
+  // Tick toutes les 30s pour rafraîchir les âges
+  useEffect(() => {
+    const t = setInterval(() => setTick(n => n + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  // WebSocket GPS
+  useEffect(() => {
+    const token = Cookies.get('access_token');
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api').replace(/\/api$/, '');
+    const socket = io(`${baseUrl}/gps`, { auth: { token }, reconnectionAttempts: 5 });
+    socketRef.current = socket;
+    socket.on('connect', () => setWsConnected(true));
+    socket.on('disconnect', () => setWsConnected(false));
+    socket.on('gps:update', (ping: GpsPing) => {
+      setPositions(prev => ({ ...prev, [ping.driver_id]: ping }));
+    });
+    socket.emit('subscribe_live');
+    return () => { socket.disconnect(); setWsConnected(false); };
+  }, []);
+
+  const livePings = Object.values(positions);
+  const displayPings: GpsPing[] = livePings.length > 0 ? livePings : DEMO_POSITIONS;
+
+  const filteredPings = lineFilter === 'Tous'
+    ? displayPings
+    : displayPings.filter(p => p.ligne === lineFilter);
+
+  const counts = {
+    live:    displayPings.filter(p => getPingStatus(p.recorded_at) === 'live').length,
+    late:    displayPings.filter(p => getPingStatus(p.recorded_at) === 'late').length,
+    offline: displayPings.filter(p => getPingStatus(p.recorded_at) === 'offline').length,
+  };
+
+  const selectedPing = selectedId ? displayPings.find(p => p.driver_id === selectedId) : null;
 
   return (
-    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-      <div style={{padding:'14px 24px',borderBottom:'1.5px solid var(--stroke)',display:'flex',
-        alignItems:'center',justifyContent:'space-between',flexShrink:0,
-        background:replayMode?'#fff':'var(--stroke)',color:replayMode?'var(--stroke)':'#fff'}}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+      {/* ── Barre de page ── */}
+      <div style={{
+        padding: '10px 20px',
+        borderBottom: '1px solid var(--border)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'var(--surface)', flexShrink: 0, gap: 12,
+      }}>
         <div>
-          <div style={{fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'.16em',textTransform:'uppercase',opacity:.6}}>
-            {replayMode?'Historique trajectoire · D1 MOHAMED Ali · Vendredi 8 mai':'Mode opérationnel · live'}
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
+            DIRECTION · TEMPS RÉEL
           </div>
-          <div style={{fontSize:18,fontWeight:700,marginTop:2}}>
-            {replayMode?'Replay GPS · L3':'Carte GPS temps réel'}
+          <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', letterSpacing: '-.025em', marginTop: 1 }}>
+            Carte GPS
           </div>
         </div>
-        <div style={{display:'flex',gap:8}}>
-          <button className="btn" onClick={() => setReplayMode(false)}
-            style={{background:!replayMode?'rgba(255,255,255,0.18)':'#fff',
-              color:!replayMode?'#fff':'var(--stroke)',borderColor:!replayMode?'rgba(255,255,255,0.3)':'var(--stroke)'}}>Live</button>
-          <button className="btn" onClick={() => setReplayMode(true)}
-            style={{background:replayMode?'var(--brand)':'rgba(255,255,255,0.06)',
-              color:'#fff',borderColor:replayMode?'var(--brand)':'rgba(255,255,255,0.2)'}}>Historique</button>
-          {replayMode && <button className="btn" style={{background:'transparent',color:'var(--stroke)',borderColor:'var(--stroke)'}}
-            onClick={() => setReplayMode(false)}>Exporter GPX</button>}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Statuts */}
+          <div style={{ display: 'flex', gap: 6, marginRight: 8 }}>
+            {([['live', counts.live, '●'], ['late', counts.late, '●'], ['offline', counts.offline, '○']] as const).map(([s, n, sym]) => (
+              <span key={s} style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                fontFamily: 'var(--font-mono)', fontSize: 11, padding: '3px 10px',
+                borderRadius: 999, border: '1px solid var(--border)',
+                color: STATUS_COLOR[s], background: 'var(--surface)',
+              }}>
+                <span>{sym}</span> {n}
+              </span>
+            ))}
+          </div>
+
+          {/* WS status */}
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: 10, padding: '3px 10px',
+            borderRadius: 999, border: `1px solid ${wsConnected ? 'var(--success)' : 'var(--border)'}`,
+            color: wsConnected ? 'var(--success)' : 'var(--text-3)',
+            background: wsConnected ? 'var(--success-10)' : 'var(--surface)',
+          }}>
+            {wsConnected ? '⬤ Live' : '○ Démo'}
+          </span>
+
+          {/* Contrôles */}
+          <button className="btn btn-sm" onClick={() => setShowRoutes(v => !v)}
+            style={showRoutes ? { background: 'var(--surface-3)', borderColor: 'var(--border-strong)' } : {}}>
+            {showRoutes ? 'Masquer lignes' : 'Afficher lignes'}
+          </button>
+          <button className="btn btn-sm" onClick={() => setDark(v => !v)}>
+            {dark ? '☀ Clair' : '◐ Sombre'}
+          </button>
         </div>
       </div>
 
-      <div style={{flex:1,display:'flex',overflow:'hidden'}}>
-        <div className="map-wrap">
-          <MapBg dark={!replayMode}/>
+      {/* ── Contenu principal ── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-          {!replayMode && (<>
-            <TaxiPin left="41%" top="36%" kind="live" label="D1"/>
-            <TaxiPin left="38%" top="59%" kind="live" label="D5"/>
-            <TaxiPin left="40%" top="50%" kind="late" label="D7"/>
-            <TaxiPin left="39%" top="65%" kind="live" label="D12"/>
-            <TaxiPin left="35%" top="71%" kind="offline" label="C5"/>
-            <TaxiPin left="62%" top="40%" kind="live" label="C14"/>
+        {/* ── Panneau latéral ── */}
+        <div style={{
+          width: 252, flexShrink: 0,
+          background: 'var(--surface)',
+          borderRight: '1px solid var(--border)',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+        }}>
+          {/* Filtres ligne */}
+          <div style={{
+            padding: '10px 12px 8px',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex', gap: 4, flexWrap: 'wrap',
+          }}>
+            {LINE_OPTS.map(l => {
+              const color = l === 'L3' ? '#E8601A' : l === 'L4' ? '#2563eb' : l === 'CHM' ? '#16a34a' : 'var(--text-2)';
+              const active = lineFilter === l;
+              return (
+                <button key={l} onClick={() => setLineFilter(l)}
+                  style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+                    padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
+                    border: `1.5px solid ${active ? color : 'var(--border)'}`,
+                    background: active ? `${color}14` : 'var(--surface)',
+                    color: active ? color : 'var(--text-3)',
+                    transition: 'all .1s',
+                  }}>
+                  {l}
+                </button>
+              );
+            })}
+          </div>
 
-            <div style={{position:'absolute',left:16,top:16,display:'flex',gap:10,zIndex:3}}>
-              {[['Live','4','var(--success)'],['Retard','1','var(--warn)'],['Hors-ligne','1','var(--stroke2)']].map(([l,v,c])=>(
-                <div key={String(l)} style={{background:'rgba(0,0,0,.65)',color:'#fff',padding:'8px 14px',borderRadius:6,fontFamily:'var(--font-mono)'}}>
-                  <div style={{fontSize:9,letterSpacing:'.14em',textTransform:'uppercase',color:'rgba(255,255,255,.55)'}}>{l}</div>
-                  <div style={{fontSize:22,fontWeight:700,color:String(c)}}>{v}</div>
+          {/* Légende statuts */}
+          <div style={{
+            padding: '8px 12px', borderBottom: '1px solid var(--border)',
+            display: 'flex', gap: 12,
+          }}>
+            {([['live', 'En ligne'], ['late', 'Retard'], ['offline', 'Hors-ligne']] as const).map(([s, label]) => (
+              <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-2)' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS_COLOR[s], display: 'inline-block' }} />
+                {label}
+              </span>
+            ))}
+          </div>
+
+          {/* Liste chauffeurs */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {(['L3', 'L4', 'CHM'] as const)
+              .filter(l => lineFilter === 'Tous' || lineFilter === l)
+              .map(l => {
+                const lColor = l === 'L3' ? '#E8601A' : l === 'L4' ? '#2563eb' : '#16a34a';
+                const lLabel = l === 'L3' ? 'Doujani ↔ La Barge' : l === 'L4' ? 'Vahibe ↔ PEM' : 'CHM ↔ La Barge';
+                const drivers = ROSTER.filter(d => d.ligne === l);
+                return (
+                  <div key={l}>
+                    {/* Ligne header */}
+                    <div style={{
+                      padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6,
+                      background: 'var(--surface-2)', borderBottom: '1px solid var(--border)',
+                      position: 'sticky', top: 0, zIndex: 1,
+                    }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: lColor, flexShrink: 0 }} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, color: lColor }}>{l}</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{lLabel}</span>
+                    </div>
+
+                    {drivers.map(dr => {
+                      const ping = displayPings.find(p => p.driver_id === dr.code || p.driver_number === dr.code);
+                      const status: 'live' | 'late' | 'offline' = ping ? getPingStatus(ping.recorded_at) : 'offline';
+                      const isSelected = selectedId === dr.code || selectedId === ping?.driver_id;
+
+                      return (
+                        <div key={dr.code}
+                          onClick={() => setSelectedId(isSelected ? null : (ping?.driver_id || dr.code))}
+                          style={{
+                            padding: '8px 12px',
+                            borderBottom: '1px solid var(--border)',
+                            cursor: 'pointer',
+                            background: isSelected ? `${lColor}08` : 'transparent',
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            transition: 'background .1s',
+                          }}
+                          onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isSelected ? `${lColor}08` : 'transparent'; }}
+                        >
+                          {/* Status dot */}
+                          <span style={{
+                            width: 7, height: 7, borderRadius: '50%',
+                            background: ping ? STATUS_COLOR[status] : 'var(--stone-300)',
+                            flexShrink: 0,
+                          }} />
+
+                          {/* Code */}
+                          <span style={{
+                            fontFamily: 'var(--font-mono)', fontSize: 9.5, fontWeight: 700,
+                            color: lColor, padding: '0 4px',
+                            border: `1.5px solid ${lColor}`, borderRadius: 3,
+                            flexShrink: 0,
+                          }}>{dr.code}</span>
+
+                          {/* Nom */}
+                          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {dr.nom}
+                          </span>
+
+                          {/* Age ping */}
+                          {ping && (
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: STATUS_COLOR[status], flexShrink: 0 }}>
+                              {fmtAge(ping.recorded_at)}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+          </div>
+
+          {/* Infos chauffeur sélectionné */}
+          {selectedPing && (
+            <div style={{
+              padding: '12px 14px', borderTop: '1.5px solid var(--border)',
+              background: 'var(--surface)', flexShrink: 0,
+            }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 6 }}>
+                Sélectionné
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, color: 'var(--brand)' }}>{selectedPing.driver_number}</span>
+                {selectedPing.driver_name && <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{selectedPing.driver_name}</span>}
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)', lineHeight: 1.6 }}>
+                {selectedPing.lat.toFixed(5)}, {selectedPing.lng.toFixed(5)}<br />
+                Vu {fmtAge(selectedPing.recorded_at)}
+              </div>
+              <button className="btn btn-sm" style={{ marginTop: 8, width: '100%', justifyContent: 'center' }}
+                onClick={() => setSelectedId(null)}>
+                Désélectionner
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Carte ── */}
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          <LeafletMap
+            positions={filteredPings}
+            dark={dark}
+            selectedDriverId={selectedId}
+            onSelectDriver={setSelectedId}
+            showRoutes={showRoutes}
+          />
+
+          {/* KPI overlay (coin haut-gauche) */}
+          <div style={{
+            position: 'absolute', top: 12, left: 12, zIndex: 1000,
+            display: 'flex', gap: 6, pointerEvents: 'none',
+          }}>
+            {([
+              ['En ligne', counts.live, STATUS_COLOR.live],
+              ['Retard', counts.late, STATUS_COLOR.late],
+              ['Hors-ligne', counts.offline, STATUS_COLOR.offline],
+            ] as const).map(([label, n, color]) => (
+              <div key={label} style={{
+                background: dark ? 'rgba(20,20,20,.82)' : 'rgba(255,255,255,.92)',
+                color: dark ? '#fff' : 'var(--text)',
+                backdropFilter: 'blur(6px)',
+                borderRadius: 8, padding: '7px 12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,.15)',
+                fontFamily: 'var(--font-mono)',
+                border: `1px solid ${dark ? 'rgba(255,255,255,.1)' : 'var(--border)'}`,
+              }}>
+                <div style={{ fontSize: 8.5, letterSpacing: '.1em', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,.5)' : 'var(--text-3)' }}>{label}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1.1, marginTop: 2 }}>{n}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Légende lignes (coin bas-gauche) */}
+          {showRoutes && (
+            <div style={{
+              position: 'absolute', bottom: 32, left: 12, zIndex: 1000,
+              background: dark ? 'rgba(20,20,20,.82)' : 'rgba(255,255,255,.92)',
+              backdropFilter: 'blur(6px)',
+              borderRadius: 8, padding: '10px 14px',
+              boxShadow: '0 2px 8px rgba(0,0,0,.15)',
+              border: `1px solid ${dark ? 'rgba(255,255,255,.1)' : 'var(--border)'}`,
+              pointerEvents: 'none',
+            }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, letterSpacing: '.1em', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,.4)' : 'var(--text-3)', marginBottom: 8 }}>
+                Lignes
+              </div>
+              {[
+                ['L3', '#E8601A', 'Doujani ↔ La Barge'],
+                ['L4', '#2563eb', 'Vahibe ↔ PEM'],
+                ['CHM', '#16a34a', 'CHM ↔ La Barge'],
+              ].map(([name, color, label]) => (
+                <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                  <div style={{ width: 20, height: 3, background: color, borderRadius: 999, flexShrink: 0 }} />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, color, flexShrink: 0 }}>{name}</span>
+                  <span style={{ fontSize: 10, color: dark ? 'rgba(255,255,255,.6)' : 'var(--text-2)' }}>{label}</span>
                 </div>
               ))}
             </div>
-
-            <div className="card" style={{position:'absolute',left:16,bottom:16,padding:'10px 14px',
-              fontSize:11,background:'rgba(255,255,255,.96)',zIndex:3}}>
-              <Eyebrow>Légende</Eyebrow>
-              <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:8}}>
-                {[['#2e8b57','En cours'],['#e8a523','Retard'],['#817A7C','Hors-ligne']].map(([c,l])=>(
-                  <span key={String(l)} style={{display:'flex',alignItems:'center',gap:8}}>
-                    <span style={{width:10,height:10,borderRadius:'50%',background:String(c),display:'inline-block'}}/>
-                    {l}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div style={{position:'absolute',right:16,top:16,display:'flex',flexDirection:'column',gap:4,zIndex:3}}>
-              {['+','−','⊕'].map(s => <button key={s} className="btn" style={{width:36,height:36,background:'rgba(255,255,255,.95)'}}>{s}</button>)}
-            </div>
-          </>)}
-
-          {replayMode && (<>
-            <svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice"
-              style={{position:'absolute',inset:0,width:'100%',height:'100%',zIndex:2}}>
-              <path d="M 380 415 L 395 380 L 412 340 Q 420 305 415 270 L 415 250"
-                stroke="var(--brand)" strokeWidth="4" fill="none"/>
-              <circle cx="380" cy="415" r="8" fill="var(--success)" stroke="#fff" strokeWidth="2.5"/>
-              <circle cx="415" cy="250" r="5" fill="#fff" stroke="var(--brand)" strokeWidth="2"/>
-              <circle cx="395" cy="380" r="7" fill="var(--danger)" stroke="#fff" strokeWidth="2.5"/>
-            </svg>
-
-            <div className="card" style={{position:'absolute',left:16,right:16,bottom:16,padding:14,
-              background:'rgba(255,255,255,.97)',zIndex:3}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                <Eyebrow>D1 · MOHAMED Ali · Lecture 11:42</Eyebrow>
-                <div style={{display:'flex',gap:4}}>
-                  {['◀◀','▶','▶▶','×2'].map((s,i) => (
-                    <button key={i} className={`btn${i===1?' btn-accent':''}`} style={{width:i===1?40:36,height:32,fontSize:12}}>{s}</button>
-                  ))}
-                </div>
-              </div>
-              <div style={{height:8,background:'var(--stroke4)',borderRadius:999,position:'relative'}}>
-                <div style={{width:'52%',height:'100%',background:'var(--brand)',borderRadius:999}}/>
-                <div style={{position:'absolute',left:'52%',top:'50%',transform:'translate(-50%,-50%)',
-                  width:16,height:16,borderRadius:'50%',background:'#fff',border:'2.5px solid var(--brand)'}}/>
-              </div>
-              <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--font-mono)',
-                fontSize:10,color:'var(--stroke2)',marginTop:4}}>
-                {['06:00','10:00','14:00','18:00','22:00'].map(t=><span key={t}>{t}</span>)}
-              </div>
-            </div>
-
-            <div className="card" style={{position:'absolute',right:16,top:16,bottom:80,width:260,
-              overflow:'auto',background:'rgba(255,255,255,.97)',padding:14,zIndex:3}}>
-              <Eyebrow>Évènements · 12</Eyebrow>
-              {[['5:00','Départ DOUJANI','done'],['5:30','Arrivée Passot Barge','done'],
-                ['5:34','Voie bloquée (incident)','incident'],['6:00','Reprise depuis DOUJANI','done'],
-                ['8:30','Position · PEM','live']].map(([t,n,k],i) => (
-                <div key={i} style={{display:'flex',gap:10,padding:'10px 0',borderBottom:'1px dashed var(--stroke3)'}}>
-                  <span style={{fontFamily:'var(--font-mono)',fontSize:11,fontWeight:700,color:'var(--stroke2)',width:38}}>{t}</span>
-                  <span style={{flex:1,fontSize:12}}>{n}</span>
-                  <span style={{width:8,height:8,borderRadius:'50%',marginTop:6,flexShrink:0,
-                    background:k==='incident'?'var(--danger)':k==='live'?'var(--brand)':'var(--success)'}}/>
-                </div>
-              ))}
-            </div>
-          </>)}
+          )}
         </div>
       </div>
     </div>

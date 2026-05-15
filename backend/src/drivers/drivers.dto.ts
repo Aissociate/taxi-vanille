@@ -47,3 +47,39 @@ export class UpdateFcmTokenDto {
   @IsString() @IsNotEmpty()
   token: string;
 }
+
+export class CreateAdvanceDto {
+  @IsNotEmpty()
+  amount: number;
+
+  @IsOptional() @IsString()
+  date?: string; // ISO date YYYY-MM-DD
+
+  @IsOptional() @IsString()
+  notes?: string;
+}
+
+export class AddRepaymentDto {
+  @IsNotEmpty()
+  amount: number;
+
+  @IsOptional() @IsString()
+  date?: string;
+
+  @IsOptional() @IsString()
+  notes?: string;
+}
+
+export class DeclareOdometerDto {
+  @IsEnum(['start', 'end'])
+  type: 'start' | 'end';
+
+  @IsString() @IsNotEmpty()
+  month: string; // YYYY-MM
+
+  @IsNotEmpty()
+  km: number;
+
+  @IsOptional() @IsString()
+  notes?: string;
+}

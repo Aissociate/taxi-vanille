@@ -29,7 +29,7 @@
     "ioredis": "^5.3.0",
     "firebase-admin": "^12.0.0",
     "aws-sdk": "^2.1500.0",
-    "multer": "^1.4.5",
+    "multer": "^2.0.0",
     "zod": "^3.22.0",
     "class-validator": "^0.14.0",
     "class-transformer": "^0.5.0",

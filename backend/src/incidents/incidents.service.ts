@@ -2,6 +2,7 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { Kysely, sql } from 'kysely';
 import { DB_TOKEN } from '../database/database.module';
 import { StorageService } from '../common/storage.service';
+import { NotificationsService } from '../common/notifications.service';
 import { CreateIncidentDto } from './incidents.dto';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class IncidentsService {
   constructor(
     @Inject(DB_TOKEN) private readonly db: Kysely<any>,
     private readonly storage: StorageService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(driverId: string, dto: CreateIncidentDto, audioFile?: Express.Multer.File) {
@@ -33,6 +35,11 @@ export class IncidentsService {
       })
       .returning(['id', 'trip_id', 'types', 'created_at'])
       .execute();
+
+    const driver = await this.db.selectFrom('drivers').select('fcm_token').where('id', '=', driverId).executeTakeFirst();
+    if (driver?.fcm_token) {
+      await this.notifications.sendToDevice(driver.fcm_token, 'Incident enregistré', `Votre signalement (${dto.types}) a bien été reçu.`);
+    }
 
     return incident;
   }

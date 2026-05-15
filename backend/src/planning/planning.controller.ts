@@ -44,8 +44,14 @@ export class PlanningController {
   }
 
   @Put(':id/driver')
-  replaceDriver(@Param('id') id: string, @Body() dto: ReplaceDriverDto, @Request() req) {
-    return this.service.replaceDriver(id, dto.driver_id, dto.reason, req.user.userId);
+  async replaceDriver(@Param('id') id: string, @Body() dto: ReplaceDriverDto, @Request() req) {
+    const userId = req.user?.userId ?? req.user?.sub ?? req.user?.id ?? null;
+    try {
+      return await this.service.replaceDriver(id, dto.driver_id, dto.reason ?? '', userId);
+    } catch (err: any) {
+      console.error('[replaceDriver] failure', { tripId: id, dto, userId, err: err?.message, stack: err?.stack });
+      throw err;
+    }
   }
 
   @Delete(':id')

@@ -2,6 +2,7 @@ import { Injectable, Inject, BadRequestException, NotFoundException } from '@nes
 import { Kysely } from 'kysely';
 import { DB_TOKEN } from '../database/database.module';
 import { GpsGateway } from '../gps/gps.gateway';
+import { NotificationsService } from '../common/notifications.service';
 import { StartTripDto, StopEventDto, EndTripDto } from './trips.dto';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class TripsService {
   constructor(
     @Inject(DB_TOKEN) private readonly db: Kysely<any>,
     private readonly gpsGateway: GpsGateway,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async startTrip(tripId: string, driverId: string, dto: StartTripDto) {
@@ -73,6 +75,12 @@ export class TripsService {
 
     const events = await this.getTripEvents(tripId);
     const totalPax = events.reduce((s, e) => s + (e.passengers_in ?? 0), 0);
+
+    const driver = await this.db.selectFrom('drivers').select('fcm_token').where('id', '=', driverId).executeTakeFirst();
+    if (driver?.fcm_token) {
+      await this.notifications.sendToDevice(driver.fcm_token, 'Course terminée', 'Votre course a bien été enregistrée.');
+    }
+
     return { ok: true, total_passengers: totalPax };
   }
 

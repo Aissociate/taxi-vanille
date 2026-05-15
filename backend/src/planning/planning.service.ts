@@ -62,7 +62,7 @@ export class PlanningService {
       .execute();
 
     await this.audit(trip.id, 'created', createdBy, null, dto);
-    await this.notifyDriver(dto.driver_id, `Nouveau trajet planifié le ${new Date(dto.scheduled_at).toLocaleDateString('fr-FR')}`);
+    try { await this.notifyDriver(dto.driver_id, `Nouveau trajet planifié le ${new Date(dto.scheduled_at).toLocaleDateString('fr-FR')}`); } catch {}
     return trip;
   }
 
@@ -85,8 +85,8 @@ export class PlanningService {
     await this.db.updateTable('trips').set({ driver_id: newDriverId }).where('id', '=', tripId).execute();
     await this.audit(tripId, 'driver_replaced', performedBy, { driver_id: oldDriverId }, { driver_id: newDriverId, reason });
 
-    await this.notifyDriver(oldDriverId, 'Vous avez été remplacé sur un trajet.');
-    await this.notifyDriver(newDriverId, 'Un trajet vous a été affecté.');
+    try { await this.notifyDriver(oldDriverId, 'Vous avez été remplacé sur un trajet.'); } catch {}
+    try { await this.notifyDriver(newDriverId, 'Un trajet vous a été affecté.'); } catch {}
 
     return { ok: true, trip_id: tripId, new_driver_id: newDriverId };
   }
@@ -107,14 +107,18 @@ export class PlanningService {
     return q.orderBy('a.created_at', 'desc').limit(limit).execute();
   }
 
-  private async audit(tripId: string, action: string, performedBy: string, before: any, after: any) {
-    await this.db.insertInto('planning_audit').values({
-      trip_id: tripId,
-      action,
-      performed_by: performedBy,
-      before_val: before ? JSON.stringify(before) : null,
-      after_val: after ? JSON.stringify(after) : null,
-    }).execute();
+  private async audit(tripId: string, action: string, performedBy: string | null, before: any, after: any) {
+    try {
+      await this.db.insertInto('planning_audit').values({
+        trip_id: tripId,
+        action,
+        performed_by: performedBy || null,
+        before_val: before ? JSON.stringify(before) : null,
+        after_val: after ? JSON.stringify(after) : null,
+      }).execute();
+    } catch (err: any) {
+      console.warn('[audit] failed (non-fatal):', err?.message);
+    }
   }
 
   private async notifyDriver(driverId: string, message: string) {
