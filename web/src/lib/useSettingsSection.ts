@@ -12,17 +12,25 @@ export function useSettingsSection<T>(section: string, defaults: T): [T, Dispatc
     loaded.current = false;
     api.get(`/settings/${section}`)
       .then(res => {
-        if (res.data !== null && res.data !== undefined) {
-          // For plain objects (not arrays), merge with defaults so new fields added
-          // after initial save don't become undefined.
-          if (
-            res.data && typeof res.data === 'object' && !Array.isArray(res.data) &&
-            latestData.current && typeof latestData.current === 'object' && !Array.isArray(latestData.current)
-          ) {
-            setData(prev => ({ ...(prev as object), ...(res.data as object) } as T));
-          } else {
-            setData(res.data as T);
-          }
+        const d = res.data;
+        // L'API renvoie {} quand la section n'existe pas encore → garder les defaults
+        const isEmpty = d !== null && d !== undefined && typeof d === 'object'
+          && !Array.isArray(d) && Object.keys(d).length === 0;
+        if (isEmpty || d === null || d === undefined) return;
+
+        // Pour les tableaux : ne remplacer que par un tableau valide
+        if (Array.isArray(defaults)) {
+          if (Array.isArray(d)) setData(d as T);
+          // sinon garder defaults (type mismatch côté API)
+          return;
+        }
+
+        // Pour les objets plats : merge avec defaults pour ne pas perdre les nouveaux champs
+        if (typeof d === 'object' && !Array.isArray(d) &&
+            typeof latestData.current === 'object' && !Array.isArray(latestData.current)) {
+          setData(prev => ({ ...(prev as object), ...(d as object) } as T));
+        } else {
+          setData(d as T);
         }
       })
       .catch(() => {})
