@@ -512,25 +512,47 @@ const labelStyle: React.CSSProperties = {
 
 interface DbDriver { id: string; driver_number: string; full_name: string; }
 
-// Fallback roster from static data (used when API returns empty list)
+// Fallback roster from static data (utilisé en mode démo uniquement)
 const STATIC_DRIVERS: DbDriver[] = [
   ...L3.map(d => ({ id: d.code, driver_number: d.code, full_name: d.nom })),
   ...L4.map(d => ({ id: d.code, driver_number: d.code, full_name: d.nom })),
   ...CHM.map(d => ({ id: d.code, driver_number: d.code, full_name: d.nom })),
 ];
 
-const loadDrivers = (setDrivers: (d: DbDriver[]) => void) =>
+/** Détermine la ligne et la couleur à partir du numéro chauffeur */
+function lineFromCode(driverNumber: string): { _ligne: string; _color: string } {
+  if (driverNumber.startsWith('D')) return { _ligne: 'L3',  _color: 'var(--brand)' };
+  if (driverNumber.startsWith('C')) return { _ligne: 'L4',  _color: 'var(--info)'  };
+  if (driverNumber.startsWith('H')) return { _ligne: 'CHM', _color: 'var(--success)' };
+  return { _ligne: 'L3', _color: 'var(--brand)' };
+}
+
+/** Convertit un chauffeur API en DriverExt (sans horaires statiques) */
+function apiToDriverExt(d: DbDriver): DriverExt {
+  return { code: d.driver_number, nom: d.full_name, ...lineFromCode(d.driver_number) } as DriverExt;
+}
+
+const STATIC_DRIVER_EXT: DriverExt[] = [
+  ...L3.map(d => ({ ...d, _ligne: 'L3',  _color: 'var(--brand)'   })),
+  ...L4.map(d => ({ ...d, _ligne: 'L4',  _color: 'var(--info)'    })),
+  ...CHM.map(d => ({ ...d, _ligne: 'CHM', _color: 'var(--success)' })),
+];
+
+const loadDrivers = (setDrivers: (d: DbDriver[]) => void, demo: boolean) => {
+  if (demo) { setDrivers(STATIC_DRIVERS); return; }
   api.get('/drivers')
     .then((r: any) => {
       const data: DbDriver[] = r.data ?? [];
-      const sorted = [...(data.length ? data : STATIC_DRIVERS)]
-        .sort((a, b) => a.driver_number.localeCompare(b.driver_number, undefined, { numeric: true }));
-      setDrivers(sorted);
+      const sorted = [...data].sort((a, b) =>
+        a.driver_number.localeCompare(b.driver_number, undefined, { numeric: true }));
+      setDrivers(sorted.length ? sorted : []);
     })
-    .catch(() => setDrivers(STATIC_DRIVERS));
+    .catch(() => setDrivers([]));
+};
 
 function NouvelleCourseModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const today = new Date().toISOString().split('T')[0];
+  const { demo } = useDemoMode();
   const [form, setForm] = useState({
     date: today, heure: '05:00', heure_arrivee: '', sens: 'AM', ligne: 'L3',
     driver_id: '', amount: '', notes: '',
@@ -540,7 +562,7 @@ function NouvelleCourseModal({ onClose, onCreated }: { onClose: () => void; onCr
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => { loadDrivers(setDrivers); }, []);
+  useEffect(() => { loadDrivers(setDrivers, demo); }, [demo]);
 
   const set = (k: keyof typeof form) => (v: string | boolean) => setForm(p => ({ ...p, [k]: v }));
 
@@ -778,6 +800,7 @@ function EditCourseModal({ tripId, prefill, onClose, onSaved }: {
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { demo } = useDemoMode();
   const [form, setForm] = useState({
     driver_id: prefill?.driver_id ?? '',
     date: prefill?.date ?? new Date().toISOString().split('T')[0],
@@ -793,7 +816,7 @@ function EditCourseModal({ tripId, prefill, onClose, onSaved }: {
   const [loading, setLoading] = useState(!!tripId);
 
   useEffect(() => {
-    loadDrivers(setDrivers);
+    loadDrivers(setDrivers, demo);
     if (tripId) {
       api.get(`/planning/${tripId}`).then(r => {
         const t: DbTrip & { is_unplanned?: boolean; passenger_count?: number } = r.data;
@@ -1027,9 +1050,12 @@ function getDaySchedule(dr: DriverExt, dayOfWeek: number): { am?: string; pm?: s
   return { am: dr.am, pm: dr.pm, astr: dr.astr };
 }
 
-function WeekGridView({ currentDate, ligne, refreshKey, onEditCell }: {
-  currentDate: Date; ligne: string; refreshKey?: number; onEditCell: (dr: DriverExt, date: Date, tripId?: string) => void;
+function WeekGridView({ currentDate, ligne, refreshKey, onEditCell, drivers: driversProp }: {
+  currentDate: Date; ligne: string; refreshKey?: number;
+  onEditCell: (dr: DriverExt, date: Date, tripId?: string) => void;
+  drivers?: DriverExt[];
 }) {
+  const { demo } = useDemoMode();
   const mon = startOfWeek(currentDate);
   const monISO = toISO(mon);
   const days = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
@@ -1040,6 +1066,7 @@ function WeekGridView({ currentDate, ligne, refreshKey, onEditCell }: {
   const [apiReady, setApiReady] = useState(false);
 
   useEffect(() => {
+    if (demo) { setTripMap({}); setApiReady(false); return; }
     let cancelled = false;
     const monDate = new Date(monISO);
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monDate, i));
@@ -1074,13 +1101,9 @@ function WeekGridView({ currentDate, ligne, refreshKey, onEditCell }: {
     setApiReady(false);
     load();
     return () => { cancelled = true; };
-  }, [monISO, refreshKey]);
+  }, [monISO, refreshKey, demo]);
 
-  const allDrivers: DriverExt[] = [
-    ...L3.map(d => ({...d, _ligne:'L3', _color:'var(--brand)'})),
-    ...L4.map(d => ({...d, _ligne:'L4', _color:'var(--info)'})),
-    ...CHM.map(d => ({...d, _ligne:'CHM', _color:'var(--success)'})),
-  ];
+  const allDrivers = driversProp ?? STATIC_DRIVER_EXT;
   const shown = ligne === 'Tous' ? allDrivers : allDrivers.filter(d => d._ligne === ligne);
 
   const timeShort = (t?: string) => {
@@ -1418,6 +1441,18 @@ export default function PlanningPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = () => setRefreshKey(k => k + 1);
   const { demo } = useDemoMode();
+  const [realDrivers, setRealDrivers] = useState<DriverExt[]>([]);
+
+  // En mode réel : charger les chauffeurs depuis l'API
+  useEffect(() => {
+    if (demo) { setRealDrivers([]); return; }
+    api.get('/drivers')
+      .then(r => {
+        const list: DbDriver[] = r.data ?? [];
+        setRealDrivers(list.map(apiToDriverExt));
+      })
+      .catch(() => setRealDrivers([]));
+  }, [demo, refreshKey]);
 
   // Charger les courses réelles pour la vue jour (pour récupérer les tripId sur clic barre)
   useEffect(() => {
@@ -1482,11 +1517,7 @@ export default function PlanningPage() {
     }
   };
 
-  const allDrivers: DriverExt[] = [
-    ...L3.map(d => ({...d, _ligne:'L3', _color:'var(--brand)'})),
-    ...L4.map(d => ({...d, _ligne:'L4', _color:'var(--info)'})),
-    ...CHM.map(d => ({...d, _ligne:'CHM', _color:'var(--success)'})),
-  ];
+  const allDrivers: DriverExt[] = demo ? STATIC_DRIVER_EXT : realDrivers;
   const lignes = ['Tous','L3','L4','CHM'];
   const shown = ligne==='Tous' ? allDrivers : allDrivers.filter(d => d._ligne===ligne);
 
@@ -1650,7 +1681,7 @@ export default function PlanningPage() {
       {viewMode === 'mois' ? (
         <MonthView currentDate={currentDate} onDayClick={(d) => { setCurrentDate(d); setViewMode('jour'); }}/>
       ) : viewMode === 'semaine' ? (
-        <WeekGridView currentDate={currentDate} ligne={ligne} refreshKey={refreshKey}
+        <WeekGridView currentDate={currentDate} ligne={ligne} refreshKey={refreshKey} drivers={allDrivers}
           onEditCell={(dr, date, tripId) => setEditCell({ dr, date, tripId })}/>
       ) : (
       <div className="scroll" style={{background:'var(--paper)'}}>
