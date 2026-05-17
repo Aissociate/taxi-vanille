@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { PageBar, Eyebrow, Btn } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useDemoMode } from '@/lib/demo';
 
 const DEMO_INVOICES: Invoice[] = [
   {
@@ -156,6 +157,7 @@ function StatusPill({ s }: { s: Status }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function InvoicesPage() {
+  const { demo } = useDemoMode();
   const [view, setView] = useState<'kanban' | 'detail' | 'pricing'>('kanban');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,18 +166,20 @@ export default function InvoicesPage() {
   const [showGenerate, setShowGenerate] = useState(false);
 
   const fetchInvoices = useCallback(() => {
+    if (demo) { setInvoices(DEMO_INVOICES); setLoading(false); return; }
     setLoading(true);
     api.get('/invoices')
       .then(res => setInvoices(res.data))
-      .catch(() => setInvoices(DEMO_INVOICES))
+      .catch(() => setInvoices([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [demo]);
 
   const fetchPricing = useCallback(() => {
+    if (demo) { setPricing(DEMO_PRICING); return; }
     api.get('/invoices/pricing-config')
       .then(res => setPricing(res.data))
       .catch(() => setPricing(DEMO_PRICING));
-  }, []);
+  }, [demo]);
 
   useEffect(() => { fetchInvoices(); fetchPricing(); }, [fetchInvoices, fetchPricing]);
 

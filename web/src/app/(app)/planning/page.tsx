@@ -1064,6 +1064,10 @@ function WeekGridView({ currentDate, ligne, refreshKey, onEditCell, drivers: dri
   // tripMap: driverNumber → isoDate → trips[]
   const [tripMap, setTripMap] = useState<Record<string, Record<string, any[]>>>({});
   const [apiReady, setApiReady] = useState(false);
+  // driverLineMap: driverNumber → lineCode (derived from actual trips this week)
+  const [driverLineMap, setDriverLineMap] = useState<Record<string,string>>({});
+  // weekLinesFromTrips: lines found in trip data this week
+  const [weekLinesFromTrips, setWeekLinesFromTrips] = useState<Array<{code:string;name:string;badge:string;color:string}>>([]);
 
   useEffect(() => {
     if (demo) { setTripMap({}); setApiReady(false); return; }
@@ -1092,6 +1096,26 @@ function WeekGridView({ currentDate, ligne, refreshKey, onEditCell, drivers: dri
             map[dnum][isoDay].push(trip);
           });
         });
+        // Build driver→line and line metadata from trip data
+        const dlm: Record<string,string> = {};
+        const lim: Record<string,{code:string;name:string;badge:string;color:string}> = {};
+        weekDays.forEach((day, i) => {
+          const trips: any[] = (dayResults[i] as any).data || [];
+          trips.forEach(trip => {
+            const dnum = idToNum[trip.driver_id];
+            if (dnum && trip.line_code && !dlm[dnum]) dlm[dnum] = trip.line_code;
+            if (trip.line_code && !lim[trip.line_code]) {
+              lim[trip.line_code] = {
+                code:  trip.line_code,
+                name:  trip.line_name  ?? trip.line_code,
+                badge: trip.line_badge ?? trip.line_code,
+                color: trip.line_color ?? '#888',
+              };
+            }
+          });
+        });
+        setDriverLineMap(dlm);
+        setWeekLinesFromTrips(Object.values(lim));
         setTripMap(map);
         setApiReady(true);
       } catch {
@@ -1104,7 +1128,23 @@ function WeekGridView({ currentDate, ligne, refreshKey, onEditCell, drivers: dri
   }, [monISO, refreshKey, demo]);
 
   const allDrivers = driversProp ?? STATIC_DRIVER_EXT;
-  const shown = ligne === 'Tous' ? allDrivers : allDrivers.filter(d => d._ligne === ligne);
+
+  // Fallback line info for legacy hardcoded lines
+  const WEEK_FALLBACK_LINES: Record<string,{code:string;name:string;badge:string;color:string}> = {
+    'L3':  {code:'L3',  name:'Doujani ↔ Passot Barge', badge:'L3',  color:'var(--brand)'},
+    'L4':  {code:'L4',  name:'Vahibe ↔ Passamainty',   badge:'L4',  color:'var(--info)'},
+    'CHM': {code:'CHM', name:'CHM ↔ La Barge',          badge:'CHM', color:'var(--success)'},
+  };
+  // Merge fallbacks with lines derived from actual trips
+  const allLineInfoMap: Record<string,{code:string;name:string;badge:string;color:string}> = {...WEEK_FALLBACK_LINES};
+  weekLinesFromTrips.forEach(l => { allLineInfoMap[l.code] = l; });
+  // Effective line for a driver: trip-based override when available, else driver-prefix fallback
+  const weekEffectiveLine = (d: DriverExt) => driverLineMap[d.code] ?? d._ligne;
+  // All distinct lines that have at least one driver, in stable order
+  const weekLineCodesForView = Array.from(new Set(allDrivers.map(d => weekEffectiveLine(d))));
+  const weekLinesForView = weekLineCodesForView.map(code => allLineInfoMap[code] ?? {code, name:code, badge:code, color:'#888'});
+
+  const shown = ligne === 'Tous' ? allDrivers : allDrivers.filter(d => weekEffectiveLine(d) === ligne);
 
   const timeShort = (t?: string) => {
     if (!t) return '';
@@ -1150,11 +1190,12 @@ function WeekGridView({ currentDate, ligne, refreshKey, onEditCell, drivers: dri
         </div>
 
         {/* Rows grouped by line */}
-        {(['L3','L4','CHM'] as const).filter(l => ligne==='Tous'||ligne===l).map(l => {
-          const lineDrivers = shown.filter(d => d._ligne === l);
+        {weekLinesForView.filter(lineInfo => ligne==='Tous'||ligne===lineInfo.code).map(lineInfo => {
+          const l = lineInfo.code;
+          const lineDrivers = shown.filter(d => weekEffectiveLine(d) === l);
           if (!lineDrivers.length) return null;
-          const lineLabel = l==='L3'?'Doujani ↔ Passot Barge':l==='L4'?'Vahibe ↔ Passamainty':'CHM ↔ La Barge';
-          const lineColor = l==='L3'?'var(--brand)':l==='L4'?'var(--info)':'var(--success)';
+          const lineLabel = lineInfo.name;
+          const lineColor = lineInfo.color;
           return (
             <div key={l}>
               {/* Line header */}
@@ -1442,6 +1483,26 @@ export default function PlanningPage() {
   const refresh = () => setRefreshKey(k => k + 1);
   const { demo } = useDemoMode();
   const [realDrivers, setRealDrivers] = useState<DriverExt[]>([]);
+  // Lines fetched from /clients/lines (used for day-view grouping and filter pills)
+  const [clientLines, setClientLines] = useState<Array<{code:string;name:string;badge:string;color:string}>>([]);
+  // driverNumber → lineCode for the currently displayed day (derived from dayTripMap trips)
+  const [dayDriverLineMap, setDayDriverLineMap] = useState<Record<string,string>>({});
+
+  // Fetch transport lines from API
+  useEffect(() => {
+    if (demo) return;
+    api.get('/clients/lines')
+      .then(r => {
+        const lines: any[] = r.data ?? [];
+        setClientLines(lines.map((l: any) => ({
+          code:  l.code,
+          name:  l.name,
+          badge: l.badge ?? l.code,
+          color: l.color ?? '#888',
+        })));
+      })
+      .catch(() => {});
+  }, [demo]);
 
   // En mode réel : charger les chauffeurs depuis l'API
   useEffect(() => {
@@ -1465,13 +1526,16 @@ export default function PlanningPage() {
         const idToNum: Record<string, string> = {};
         driverList.forEach((d: any) => { idToNum[d.id] = d.driver_number; });
         const map: Record<string, any[]> = {};
+        const dlm: Record<string, string> = {};
         trips.filter((t: any) => t.status !== 'cancelled').forEach((t: any) => {
           const code = idToNum[t.driver_id];
           if (!code) return;
           if (!map[code]) map[code] = [];
           map[code].push(t);
+          if (t.line_code && !dlm[code]) dlm[code] = t.line_code;
         });
         setDayTripMap(map);
+        setDayDriverLineMap(dlm);
       })
       .catch(() => {});
   }, [viewMode, currentDate, refreshKey, demo]);
@@ -1518,8 +1582,23 @@ export default function PlanningPage() {
   };
 
   const allDrivers: DriverExt[] = demo ? STATIC_DRIVER_EXT : realDrivers;
-  const lignes = ['Tous','L3','L4','CHM'];
-  const shown = ligne==='Tous' ? allDrivers : allDrivers.filter(d => d._ligne===ligne);
+
+  // Fallback line info for day view (before trip data loads or for static drivers)
+  const DAY_FALLBACK_LINES: Record<string,{code:string;name:string;badge:string;color:string}> = {
+    'L3':  {code:'L3',  name:'Doujani ↔ Passot Barge', badge:'L3',  color:'var(--brand)'},
+    'L4':  {code:'L4',  name:'Vahibe ↔ Passamainty',   badge:'L4',  color:'var(--info)'},
+    'CHM': {code:'CHM', name:'CHM ↔ La Barge',          badge:'CHM', color:'var(--success)'},
+  };
+  const dayLineInfoMap: Record<string,{code:string;name:string;badge:string;color:string}> = {...DAY_FALLBACK_LINES};
+  clientLines.forEach(l => { dayLineInfoMap[l.code] = l; });
+  const dayEffectiveLine = (d: DriverExt) => dayDriverLineMap[d.code] ?? d._ligne;
+
+  // Build filter pill options from drivers + client lines
+  const LEGACY_LINE_CODES = ['L3','L4','CHM'];
+  const extraLineCodes = clientLines.map(l => l.code).filter(c => !LEGACY_LINE_CODES.includes(c));
+  const lignes = ['Tous', ...LEGACY_LINE_CODES, ...extraLineCodes];
+
+  const shown = ligne==='Tous' ? allDrivers : allDrivers.filter(d => dayEffectiveLine(d) === ligne);
 
   return (
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -1705,11 +1784,12 @@ export default function PlanningPage() {
           </div>
         </div>
 
-        {(['L3','L4','CHM'] as const).filter(l => ligne==='Tous'||ligne===l).map(l => {
-          const lineDrivers = shown.filter(d => d._ligne===l);
+        {Array.from(new Set(allDrivers.map(d => dayEffectiveLine(d)))).map(lCode => dayLineInfoMap[lCode] ?? {code:lCode,name:lCode,badge:lCode,color:'#888'}).filter(lineInfo => ligne==='Tous'||ligne===lineInfo.code).map(lineInfo => {
+          const l = lineInfo.code;
+          const lineDrivers = shown.filter(d => dayEffectiveLine(d) === l);
           if (!lineDrivers.length) return null;
-          const lineLabel = l==='L3'?'Doujani ↔ Passot Barge':l==='L4'?'Vahibe ↔ Passamainty':'CHM ↔ La Barge';
-          const lineColor = l==='L3'?'var(--brand)':l==='L4'?'var(--info)':'var(--success)';
+          const lineLabel = lineInfo.name;
+          const lineColor = lineInfo.color;
           return (
             <div key={l}>
               <div style={{padding:'5px 10px 5px 14px',background:'var(--ink-100)',borderBottom:'1px solid var(--stroke3)',

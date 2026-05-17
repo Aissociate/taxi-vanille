@@ -26,6 +26,12 @@ export class ClientsController {
     return this.service.getClientLines();
   }
 
+  @Post(':id/lines')
+  @Roles('direction')
+  createLine(@Param('id') id: string, @Body() dto: any) {
+    return this.service.createLine(id, dto);
+  }
+
   // ⚠ Idem : avant @Get(':id')
   @Get('reports')
   @Roles('direction')
@@ -40,14 +46,14 @@ export class ClientsController {
 
   @Post()
   @Roles('direction')
-  create(@Body() dto: CreateClientDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateClientDto, @Req() req: any) {
+    return this.service.create(dto, req.user?.sub ?? req.user?.id);
   }
 
   @Put(':id')
   @Roles('direction')
-  update(@Param('id') id: string, @Body() dto: CreateClientDto) {
-    return this.service.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: CreateClientDto, @Req() req: any) {
+    return this.service.update(id, dto, req.user?.sub ?? req.user?.id);
   }
 
   // ── Rapport agrégé (ancien endpoint) ─────────────────────────────────────────

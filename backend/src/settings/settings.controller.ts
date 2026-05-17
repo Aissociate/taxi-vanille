@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards';
 import { SettingsService } from './settings.service';
 
@@ -14,7 +14,8 @@ export class SettingsController {
   getSection(@Param('section') section: string) { return this.service.getSection(section); }
 
   @Put(':section')
-  upsert(@Param('section') section: string, @Body() body: unknown) {
-    return this.service.upsert(section, body);
+  upsert(@Param('section') section: string, @Body() body: unknown, @Request() req: any) {
+    const userId = req.user?.sub ?? req.user?.id;
+    return this.service.upsert(section, body, userId);
   }
 }

@@ -1072,20 +1072,23 @@ function FraisGestion() {
   const [cfg, setCfg] = useSettingsSection('frais_gestion', DEF_FRAIS);
   const set = <K extends keyof typeof cfg>(k: K) => (v: typeof cfg[K]) => setCfg(p => ({ ...p, [k]: v }));
 
+  // Guard: kmSlots peut être absent si sauvegardé avec une ancienne version
+  const kmSlots: KmSlot[] = Array.isArray(cfg.kmSlots) ? cfg.kmSlots : DEF_FRAIS.kmSlots;
+
   const addKmSlot = () => {
-    const last = cfg.kmSlots[cfg.kmSlots.length - 1];
+    const last = kmSlots[kmSlots.length - 1];
     const newFrom = last?.to ?? '0';
     setCfg(p => ({
       ...p,
-      kmSlots: [...p.kmSlots, { id: Date.now(), from: newFrom, to: '', price: '0.00' }],
+      kmSlots: [...(Array.isArray(p.kmSlots) ? p.kmSlots : DEF_FRAIS.kmSlots), { id: Date.now(), from: newFrom, to: '', price: '0.00' }],
     }));
   };
 
   const updateKmSlot = (id: number, field: keyof KmSlot, val: string) =>
-    setCfg(p => ({ ...p, kmSlots: p.kmSlots.map(s => s.id === id ? { ...s, [field]: val } : s) }));
+    setCfg(p => ({ ...p, kmSlots: (Array.isArray(p.kmSlots) ? p.kmSlots : DEF_FRAIS.kmSlots).map(s => s.id === id ? { ...s, [field]: val } : s) }));
 
   const deleteKmSlot = (id: number) =>
-    setCfg(p => ({ ...p, kmSlots: p.kmSlots.filter(s => s.id !== id) }));
+    setCfg(p => ({ ...p, kmSlots: (Array.isArray(p.kmSlots) ? p.kmSlots : DEF_FRAIS.kmSlots).filter(s => s.id !== id) }));
 
   const inputBox = (value: string, onChange: (v: string) => void, unit: string, width = 90) => (
     <div style={{ display: 'flex', alignItems: 'center', border: '1.25px solid var(--stroke3)', borderRadius: 5, overflow: 'hidden', width }}>
@@ -1155,7 +1158,7 @@ function FraisGestion() {
           ))}
         </div>
 
-        {cfg.kmSlots.map((s, i) => (
+        {kmSlots.map((s, i) => (
           <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '90px 16px 90px 1fr 110px 32px', gap: 8, alignItems: 'center', padding: '6px 0', borderTop: i > 0 ? '1px dashed var(--stroke4)' : 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', border: '1.25px solid var(--stroke3)', borderRadius: 5, overflow: 'hidden' }}>
               <input type="number" min="0" value={s.from} onChange={e => updateKmSlot(s.id, 'from', e.target.value)}

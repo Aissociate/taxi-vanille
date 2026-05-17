@@ -30,13 +30,16 @@ export default function TripScreen() {
 
   const { data: trip } = useQuery({
     queryKey: ['trip', tripId],
+    enabled: !!tripId,
     queryFn: () => api.get(`/planning/${tripId}`).then(r => r.data).catch(() => null),
   });
 
-  const stops: any[] = trip?.stops ?? MOCK_STOPS;
+  // 'stops' enrichis par le backend (getTodaySchedule / findOne)
+  // Fallback sur MOCK_STOPS uniquement hors-ligne
+  const stops: any[] = (trip?.stops && trip.stops.length > 0) ? trip.stops : MOCK_STOPS;
   const current = stops[stopIdx] ?? stops[0];
   const next = stops[stopIdx + 1];
-  const tripName = trip?.name ?? 'EHPAD DE PAMANDZI';
+  const tripName = trip?.client_name ?? trip?.direction ?? 'Trajet';
 
   async function validateStop() {
     const event = {

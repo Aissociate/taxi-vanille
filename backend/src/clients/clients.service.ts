@@ -1,11 +1,15 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { Kysely } from 'kysely';
 import { DB_TOKEN } from '../database/database.module';
+import { AuditService } from '../common/audit.service';
 import { CreateClientDto, SaveReportDto } from './clients.dto';
 
 @Injectable()
 export class ClientsService {
-  constructor(@Inject(DB_TOKEN) private readonly db: Kysely<any>) {}
+  constructor(
+    @Inject(DB_TOKEN) private readonly db: Kysely<any>,
+    private readonly audit: AuditService,
+  ) {}
 
   // ── Clients ─────────────────────────────────────────────────────────────────
 
@@ -28,16 +32,23 @@ export class ClientsService {
     return client;
   }
 
-  async create(dto: CreateClientDto) {
+  async create(dto: CreateClientDto, performedBy?: string) {
     const [client] = await this.db
       .insertInto('clients')
       .values(dto as any)
       .returning(['id', 'name'])
       .execute();
+    await this.audit.log({
+      entityType: 'client', entityId: client.id,
+      action: 'client_created',
+      performedBy,
+      after: { name: client.name },
+    });
     return client;
   }
 
-  async update(id: string, dto: CreateClientDto) {
+  async update(id: string, dto: CreateClientDto, performedBy?: string) {
+    const before = await this.findOne(id).catch(() => null);
     const [client] = await this.db
       .updateTable('clients')
       .set(dto as any)
@@ -45,6 +56,13 @@ export class ClientsService {
       .returning(['id', 'name'])
       .execute();
     if (!client) throw new NotFoundException('Client introuvable');
+    await this.audit.log({
+      entityType: 'client', entityId: id,
+      action: 'client_updated',
+      performedBy,
+      before: before ? { name: (before as any).name } : null,
+      after:  { name: client.name, ...dto },
+    });
     return client;
   }
 
@@ -106,6 +124,32 @@ export class ClientsService {
       .orderBy('c.name')
       .orderBy('cl.sort_order')
       .execute();
+  }
+
+  async createLine(clientId: string, dto: {
+    code: string; name: string; badge?: string; color?: string;
+    vehicle_capacity?: number; dir_matin_a?: string; dir_matin_r?: string;
+    dir_am_a?: string; dir_am_r?: string;
+  }) {
+    const [line] = await this.db
+      .insertInto('client_lines')
+      .values({
+        client_id:        clientId,
+        code:             dto.code,
+        name:             dto.name,
+        badge:            dto.badge ?? dto.code.substring(0, 6),
+        color:            dto.color ?? '#7c3aed',
+        vehicle_capacity: dto.vehicle_capacity ?? 55,
+        dir_matin_a:      dto.dir_matin_a ?? '',
+        dir_matin_r:      dto.dir_matin_r ?? '',
+        dir_am_a:         dto.dir_am_a ?? '',
+        dir_am_r:         dto.dir_am_r ?? '',
+        active:           true,
+        sort_order:       0,
+      })
+      .returning(['id', 'code', 'name', 'badge', 'client_id'])
+      .execute();
+    return line;
   }
 
   // ── Stats journalières (client_daily_stats) ──────────────────────────────────

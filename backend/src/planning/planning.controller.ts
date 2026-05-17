@@ -22,10 +22,12 @@ export class PlanningController {
 
   @Get('audit')
   getAudit(
-    @Query('trip_id') tripId?: string,
-    @Query('limit') limit = '50',
+    @Query('trip_id')     tripId?: string,
+    @Query('entity_type') entityType?: string,
+    @Query('entity_id')   entityId?: string,
+    @Query('limit')       limit = '200',
   ) {
-    return this.service.getAudit(tripId, parseInt(limit));
+    return this.service.getAudit(tripId, entityType, entityId, parseInt(limit));
   }
 
   @Get(':id')

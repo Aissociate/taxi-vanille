@@ -30,6 +30,9 @@ export class CreateTripDto {
 
   @IsOptional() @IsString()
   direction?: string;
+
+  @IsOptional() @IsUUID()
+  line_id?: string;
 }
 
 export class UpdateTripDto {
@@ -62,6 +65,9 @@ export class UpdateTripDto {
 
   @IsOptional() @IsString()
   direction?: string;
+
+  @IsOptional() @IsUUID()
+  line_id?: string;
 }
 
 export class ReplaceDriverDto {

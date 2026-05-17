@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { PageBar, Eyebrow } from '@/components/ui';
+import { useDemoMode } from '@/lib/demo';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -433,6 +434,7 @@ function NewReportModal({
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function RapportsPage() {
+  const { demo } = useDemoMode();
   const [lines,       setLines]       = useState<ClientLine[]>([]);
   const [reports,     setReports]     = useState<Report[]>([]);
   const [loading,     setLoading]     = useState(true);
@@ -444,6 +446,17 @@ export default function RapportsPage() {
   /* Charger lignes + tous les rapports */
   const loadData = useCallback(async () => {
     setLoading(true);
+    if (demo) {
+      setLines([
+        { id:'l3', client_id:'cadema', client_name:'CADEMA', code:'L3', name:'Ligne 3', badge:'AO', color:'#2563eb' },
+        { id:'l4', client_id:'cadema', client_name:'CADEMA', code:'L4', name:'Ligne 4', badge:'AO', color:'#7c3aed' },
+        { id:'chm', client_id:'chm',   client_name:'CHM',   code:'CHM-PT', name:'Petite-Terre', badge:'MARCHÉ', color:'#059669' },
+      ]);
+      setReports(DEMO_REPORTS);
+      setSelClient('cadema');
+      setLoading(false);
+      return;
+    }
     try {
       const [linesRes, reportsRes] = await Promise.all([
         api.get('/clients/lines'),
@@ -453,26 +466,18 @@ export default function RapportsPage() {
       const reportsData: Report[]   = reportsRes.data ?? [];
       setLines(linesData);
       setReports(reportsData);
-      // Sélectionner le premier client s'il y en a
       if (!selClient && linesData.length) {
-        const firstClientId = linesData[0].client_id;
-        setSelClient(firstClientId);
+        setSelClient(linesData[0].client_id);
       }
     } catch {
-      // Données demo si API absente
-      setLines([
-        { id:'l3', client_id:'cadema', client_name:'CADEMA', code:'L3', name:'Ligne 3', badge:'AO', color:'#2563eb' },
-        { id:'l4', client_id:'cadema', client_name:'CADEMA', code:'L4', name:'Ligne 4', badge:'AO', color:'#7c3aed' },
-        { id:'chm', client_id:'chm',   client_name:'CHM',   code:'CHM-PT', name:'Petite-Terre', badge:'MARCHÉ', color:'#059669' },
-      ]);
-      setReports(DEMO_REPORTS);
-      setSelClient('cadema');
+      setLines([]);
+      setReports([]);
     } finally {
       setLoading(false);
     }
-  }, [selClient]);
+  }, [demo, selClient]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [demo]);
 
   /* Clients uniques depuis les lignes */
   const uniqueClients = Array.from(

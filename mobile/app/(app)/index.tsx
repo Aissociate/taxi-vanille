@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/src/lib/api';
-import { saveSchedule, getSchedule, bufferGps } from '@/src/lib/db';
+import { saveSchedule, getSchedule, bufferGps, getPendingEvents } from '@/src/lib/db';
 import { syncAll } from '@/src/lib/sync';
 
 const BRAND = '#F26419';
@@ -17,16 +17,18 @@ const SUCCESS = '#2E8B57';
 const DANGER = '#D13A2A';
 const WARN = '#F26419';
 
-const MOCK_TRIPS = [
-  { id: 'T1', time: '07:30', name: 'CHM Mamoudzou',        patients: 4, stops: 6, status: 'done' },
-  { id: 'T2', time: '09:15', name: 'EHPAD de Pamandzi',    patients: 3, stops: 4, status: 'sync' },
-  { id: 'T3', time: '11:00', name: 'Clinique de l\'Océan', patients: 5, stops: 7, status: 'sync' },
-  { id: 'T4', time: '14:00', name: 'Cabinet médical Cavani',patients:2, stops: 3, status: 'planned' },
-  { id: 'T5', time: '16:30', name: 'EHPAD de Pamandzi',    patients: 4, stops: 5, status: 'planned' },
-];
-
-const DRIVER_NUM = '047';
-const CACHE_TIME = '09:02';
+/** Convertit un trip API en affichage normalisé */
+function normalizeTrip(t: any) {
+  return {
+    id: t.id,
+    time: t.scheduled_at ? new Date(t.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
+    name: t.client_name || t.direction || 'Trajet',
+    patients: t.passenger_count ?? 0,
+    stops: t.stops_count ?? (Array.isArray(t.stops) ? t.stops.length : 0),
+    // 'completed' backend → 'done' UI ; 'in_progress' → 'in_progress' ✓
+    status: t.status === 'completed' ? 'done' : t.status ?? 'planned',
+  };
+}
 
 function formatDate() {
   const d = new Date();
@@ -36,24 +38,40 @@ function formatDate() {
 }
 
 export default function ScheduleScreen() {
-  const [trips, setTrips] = useState<any[]>(MOCK_TRIPS);
+  const [trips, setTrips] = useState<any[]>([]);
   const [offline, setOffline] = useState(false);
-  const [pendingCount, setPendingCount] = useState(12);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [driverNum, setDriverNum] = useState('');
+  const [cacheTime, setCacheTime] = useState('');
   const gpsInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Charger le profil chauffeur au montage
+  useEffect(() => {
+    api.get('/drivers/me')
+      .then(r => setDriverNum(r.data.driver_number ?? ''))
+      .catch(() => {});
+  }, []);
+
+  // Mettre à jour le compteur d'événements en attente
+  const refreshPending = () => setPendingCount(getPendingEvents().length);
 
   const { isLoading, refetch } = useQuery({
     queryKey: ['schedule'],
     queryFn: async () => {
       try {
         const { data } = await api.get('/drivers/me/schedule/today');
-        saveSchedule(data);
-        setTrips(data);
+        const normalized = data.map(normalizeTrip);
+        saveSchedule(normalized);
+        setTrips(normalized);
         setOffline(false);
-        return data;
+        setCacheTime(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+        refreshPending();
+        return normalized;
       } catch {
         const cached = getSchedule();
         if (cached.length) setTrips(cached);
         setOffline(true);
+        refreshPending();
         return cached;
       }
     },
@@ -66,7 +84,8 @@ export default function ScheduleScreen() {
       gpsInterval.current = setInterval(async () => {
         try {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-          bufferGps({ lat: loc.coords.latitude, lng: loc.coords.longitude, accuracy: loc.coords.accuracy ?? 0 });
+          // Correct: arguments individuels (lat, lng, accuracy, tripId)
+          bufferGps(loc.coords.latitude, loc.coords.longitude, loc.coords.accuracy ?? null, null);
           await api.post('/gps/ping', { lat: loc.coords.latitude, lng: loc.coords.longitude });
         } catch {}
       }, 60000);
@@ -82,7 +101,7 @@ export default function ScheduleScreen() {
       {(offline || syncCount > 0) && (
         <View style={s.banner}>
           <Text style={s.bannerText}>
-            ⚠  MODE HORS-LIGNE · {pendingCount} ÉLÉMENTS EN ATTENTE
+            {offline ? `⚠  MODE HORS-LIGNE${pendingCount > 0 ? ` · ${pendingCount} ÉLÉMENTS EN ATTENTE` : ''}` : `↻ ${pendingCount} ÉLÉMENTS EN ATTENTE`}
           </Text>
         </View>
       )}
@@ -93,7 +112,7 @@ export default function ScheduleScreen() {
           <Text style={s.dateText}>{formatDate().toUpperCase()}</Text>
           <Text style={s.titleText}>Planning du jour</Text>
         </View>
-        <Text style={s.driverNum}>{DRIVER_NUM}</Text>
+        <Text style={s.driverNum}>{driverNum || '—'}</Text>
       </View>
 
       <ScrollView
@@ -104,7 +123,7 @@ export default function ScheduleScreen() {
         {/* Cache info pill */}
         {offline && (
           <View style={s.cachePill}>
-            <Text style={s.cachePillText}>Données en cache · dernière maj {CACHE_TIME}</Text>
+            <Text style={s.cachePillText}>Données en cache · dernière maj {cacheTime || '—'}</Text>
           </View>
         )}
 

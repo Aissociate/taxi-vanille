@@ -3,6 +3,7 @@ import { Kysely } from 'kysely';
 import { DB_TOKEN } from '../database/database.module';
 import { StorageService } from '../common/storage.service';
 import { NotificationsService } from '../common/notifications.service';
+import { AuditService } from '../common/audit.service';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PDFDocument = require('pdfkit');
@@ -50,6 +51,7 @@ export class InvoicesService {
     @Inject(DB_TOKEN) private readonly db: Kysely<any>,
     private readonly storage: StorageService,
     private readonly notifications: NotificationsService,
+    private readonly audit: AuditService,
   ) {}
 
   async findAll(filters: { driverId?: string; status?: string; from?: string; to?: string; month?: string }) {
@@ -257,22 +259,36 @@ export class InvoicesService {
       .updateTable('invoices')
       .set({ status: 'validated', validated_by: validatedBy, validated_at: new Date() })
       .where('id', '=', id)
-      .returning(['id', 'invoice_number', 'status', 'driver_id'])
+      .returning(['id', 'invoice_number', 'status', 'driver_id', 'net_amount', 'month'])
       .execute();
     if (!invoice) throw new NotFoundException('Facture introuvable');
     await this.notifyDriver((invoice as any).driver_id, 'Facture validée', `Votre facture ${invoice.invoice_number} a été validée.`);
+    await this.audit.log({
+      entityType: 'invoice', entityId: id,
+      action: 'invoice_validated',
+      performedBy: validatedBy,
+      before: { status: 'draft' },
+      after:  { status: 'validated', invoice_number: invoice.invoice_number, net_amount: invoice.net_amount, month: invoice.month },
+    });
     return invoice;
   }
 
-  async markPaid(id: string) {
+  async markPaid(id: string, performedBy?: string) {
     const [invoice] = await this.db
       .updateTable('invoices')
       .set({ status: 'paid', paid_at: new Date() })
       .where('id', '=', id)
-      .returning(['id', 'invoice_number', 'status', 'driver_id'])
+      .returning(['id', 'invoice_number', 'status', 'driver_id', 'net_amount', 'month'])
       .execute();
     if (!invoice) throw new NotFoundException('Facture introuvable');
     await this.notifyDriver((invoice as any).driver_id, 'Paiement en cours', `Votre facture ${invoice.invoice_number} est mise en paiement.`);
+    await this.audit.log({
+      entityType: 'invoice', entityId: id,
+      action: 'invoice_paid',
+      performedBy,
+      before: { status: 'validated' },
+      after:  { status: 'paid', invoice_number: invoice.invoice_number, net_amount: invoice.net_amount, month: invoice.month },
+    });
     return invoice;
   }
 

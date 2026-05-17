@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { api } from '@/lib/api';
+import { useDemoMode } from '@/lib/demo';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,7 +16,7 @@ interface Summary {
   avg_passengers_per_trip: string;
   avg_passengers_per_day: string;
   incidents: number;
-  last_incident: { description: string; driver_number: string; full_name: string } | null;
+  last_incident: { notes: string; driver_number: string; full_name: string } | null;
   ponctualite: string;
   taux_frequentation: string;
   avg_trip_duration_min: number;
@@ -191,7 +192,7 @@ const DEMO: KpiData = {
     total_revenue: '12480', avg_revenue_per_trip: '66.74',
     total_passengers: 2541, avg_passengers_per_trip: '13.6', avg_passengers_per_day: '363',
     incidents: 1,
-    last_incident: { description: 'panne moteur', driver_number: 'D7', full_name: 'COMBO Said' },
+    last_incident: { notes: 'panne moteur', driver_number: 'D7', full_name: 'COMBO Said' },
     ponctualite: '94.2', taux_frequentation: '56.7', avg_trip_duration_min: 38,
     prev_revenue: '11774', prev_completed: 175,
     revenue_delta_pct: '6.0', completed_delta: 12,
@@ -231,6 +232,7 @@ const CAUSE_COLOR: Record<string, string> = {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const { demo } = useDemoMode();
   const [kpi, setKpi] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('semaine');
@@ -240,16 +242,22 @@ export default function DashboardPage() {
   const activeDate = period === 'jour' ? (customDate || todayISO) : '';
 
   useEffect(() => {
+    if (demo) {
+      setKpi(DEMO);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const { from, to } = getRange(period, activeDate || undefined);
     api.get(`/kpi/dashboard?from=${from}&to=${to}`)
       .then(res => setKpi(res.data))
-      .catch(() => setKpi(DEMO))
+      .catch(() => setKpi(null))
       .finally(() => setLoading(false));
-  }, [period, activeDate]);
+  }, [period, activeDate, demo]);
 
   const data = kpi ?? DEMO;
   const s = data.summary;
+  const noRealData = !demo && !kpi;
   const now = new Date();
   const meta = PERIOD_META[period];
 
@@ -288,13 +296,26 @@ export default function DashboardPage() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         background: 'var(--surface)', flexShrink: 0,
       }}>
-        <div>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
-            {eyebrow}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--text-3)' }}>
+              {eyebrow}
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', letterSpacing: '-.025em', marginTop: 1 }}>
+              Tableau de bord KPI
+            </div>
           </div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', letterSpacing: '-.025em', marginTop: 1 }}>
-            Tableau de bord KPI
-          </div>
+          {demo && (
+            <span style={{
+              fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700,
+              letterSpacing: '.10em', textTransform: 'uppercase',
+              padding: '2px 7px', borderRadius: 4,
+              background: 'rgba(245,158,11,.12)', color: 'var(--warn)',
+              border: '1px solid rgba(245,158,11,.3)',
+            }}>
+              DÉMO
+            </span>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           {PERIODS.map(({ key, label }) => (
@@ -327,6 +348,18 @@ export default function DashboardPage() {
       {/* ── Contenu scrollable ── */}
       <div className="scroll" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--surface-2)' }}>
 
+        {/* ── Bannière mode réel sans données ── */}
+        {noRealData && !loading && (
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
+            padding: '20px 22px', textAlign: 'center', color: 'var(--text-3)', fontSize: 13,
+          }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>📊</div>
+            <div style={{ fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>Aucune donnée pour cette période</div>
+            <div style={{ fontSize: 12 }}>Les KPI s'alimenteront au fur et à mesure des courses saisies.</div>
+          </div>
+        )}
+
         {/* ── Ligne 1 : 4 KPI ── */}
         <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <KpiBlock
@@ -352,7 +385,7 @@ export default function DashboardPage() {
           <KpiBlock
             label="Incidents ouverts"
             value={String(s.incidents)}
-            sub={s.last_incident ? `${s.last_incident.driver_number} · ${s.last_incident.full_name} · ${s.last_incident.description}` : 'Aucun incident'}
+            sub={s.last_incident ? `${s.last_incident.driver_number} · ${s.last_incident.full_name} · ${s.last_incident.notes}` : 'Aucun incident'}
             danger={s.incidents > 0}
           />
         </div>
@@ -397,7 +430,7 @@ export default function DashboardPage() {
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 32, fontWeight: 700, color: 'var(--text)', letterSpacing: '-.03em' }}>
                 {s.missed_trips}
               </span>
-              {data.missed_by_cause.length > 0 && (
+              {s.missed_trips > 0 && data.missed_by_cause[0]?.count > 0 && (
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                   {data.missed_by_cause[0].cause.toLowerCase()} = cause #1
                 </span>

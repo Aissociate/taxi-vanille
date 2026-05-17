@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Get, Body, Param, Query,
+  Controller, Post, Get, Patch, Body, Param, Query,
   UseGuards, Request, UseInterceptors, UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -33,6 +33,14 @@ export class IncidentsController {
     @Query('to') to?: string,
   ) {
     return this.service.findAll({ driverId, tripId, from, to });
+  }
+
+  @Patch(':id/resolve')
+  @UseGuards(RolesGuard)
+  @Roles('direction', 'coordinator')
+  resolve(@Param('id') id: string, @Request() req) {
+    const userId = req.user?.sub ?? req.user?.userId ?? req.user?.id;
+    return this.service.resolve(id, userId);
   }
 
   @Get(':id/audio')

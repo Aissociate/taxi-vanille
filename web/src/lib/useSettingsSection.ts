@@ -25,10 +25,15 @@ export function useSettingsSection<T>(section: string, defaults: T): [T, Dispatc
           return;
         }
 
-        // Pour les objets plats : merge avec defaults pour ne pas perdre les nouveaux champs
+        // Pour les objets plats : defaults < prev < API
+        // Ainsi les nouveaux champs absents de la sauvegarde reçoivent toujours leur valeur par défaut
         if (typeof d === 'object' && !Array.isArray(d) &&
             typeof latestData.current === 'object' && !Array.isArray(latestData.current)) {
-          setData(prev => ({ ...(prev as object), ...(d as object) } as T));
+          setData(prev => ({
+            ...(defaults as object),
+            ...(prev as object),
+            ...(d as object),
+          } as T));
         } else {
           setData(d as T);
         }

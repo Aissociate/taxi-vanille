@@ -4,12 +4,14 @@ import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { DB_TOKEN } from '../database/database.module';
 import { Kysely } from 'kysely';
+import { AuditService } from '../common/audit.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @Inject(DB_TOKEN) private readonly db: Kysely<any>,
     private readonly jwt: JwtService,
+    private readonly audit: AuditService,
   ) {}
 
   async driverLogin(driverNumber: string, pin: string) {
@@ -24,7 +26,13 @@ export class AuthService {
       throw new UnauthorizedException('Numéro ou PIN incorrect');
     }
 
-    return this.issueTokens({ sub: driver.id, type: 'driver', role: 'driver' });
+    const tokens = await this.issueTokens({ sub: driver.id, type: 'driver', role: 'driver' });
+    await this.audit.log({
+      entityType: 'auth', entityId: driver.id,
+      action: 'driver_login',
+      after: { driver_number: driverNumber, type: 'driver' },
+    });
+    return tokens;
   }
 
   async webLogin(email: string, password: string) {
@@ -39,7 +47,14 @@ export class AuthService {
       throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
 
-    return this.issueTokens({ sub: user.id, type: 'web', role: user.role });
+    const tokens = await this.issueTokens({ sub: user.id, type: 'web', role: user.role });
+    await this.audit.log({
+      entityType: 'auth', entityId: user.id,
+      action: 'web_login',
+      performedBy: user.id,
+      after: { email: user.email, role: user.role },
+    });
+    return tokens;
   }
 
   async refreshToken(token: string) {
@@ -82,11 +97,23 @@ export class AuthService {
 
   async revokeToken(token: string) {
     const hash = createHash('sha256').update(token).digest('hex');
+    const stored = await this.db
+      .selectFrom('refresh_tokens')
+      .select(['user_id', 'user_type'])
+      .where('token_hash', '=', hash)
+      .executeTakeFirst();
     await this.db
       .updateTable('refresh_tokens')
       .set({ revoked: true })
       .where('token_hash', '=', hash)
       .execute();
+    if (stored) {
+      await this.audit.log({
+        entityType: 'auth', entityId: stored.user_id,
+        action: 'logout',
+        after: { user_type: stored.user_type },
+      });
+    }
   }
 
   private async issueTokens(payload: { sub: string; type: string; role?: string } & Record<string, any>) {

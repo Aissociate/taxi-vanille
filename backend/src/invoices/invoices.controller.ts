@@ -62,8 +62,8 @@ export class InvoicesController {
 
   @Put(':id/pay')
   @Roles('direction')
-  markPaid(@Param('id') id: string) {
-    return this.service.markPaid(id);
+  markPaid(@Param('id') id: string, @Request() req: any) {
+    return this.service.markPaid(id, req.user?.sub ?? req.user?.userId);
   }
 
   @Get(':id/pdf')

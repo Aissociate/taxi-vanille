@@ -24,8 +24,8 @@ export class KpiService {
       .select([
         this.db.fn.count<number>('id').as('total_trips'),
         sql<number>`count(*) filter (where status = 'completed')`.as('completed_trips'),
-        sql<number>`count(*) filter (where status not in ('completed','pending','scheduled'))`.as('missed_trips'),
-        sql<number>`count(*) filter (where status = 'delayed' or (notes ilike '%retard%'))`.as('delayed_trips'),
+        sql<number>`count(*) filter (where status = 'cancelled')`.as('missed_trips'),
+        sql<number>`count(*) filter (where notes ilike '%retard%')`.as('delayed_trips'),
         sql<number>`sum(amount) filter (where status = 'completed')`.as('total_revenue'),
         sql<number>`avg(amount) filter (where status = 'completed')`.as('avg_revenue_per_trip'),
       ])
@@ -70,10 +70,10 @@ export class KpiService {
         .innerJoin('trip_events as te2', 'te2.trip_id', 'te1.trip_id')
         .innerJoin('trips as t', 't.id', 'te1.trip_id')
         .select(
-          sql<number>`avg(extract(epoch from (te2.created_at - te1.created_at)) / 60)`.as('avg_min')
+          sql<number>`avg(extract(epoch from (te2.occurred_at - te1.occurred_at)) / 60)`.as('avg_min')
         )
-        .where('te1.event_type', '=', 'started')
-        .where('te2.event_type', '=', 'arrived')
+        .where('te1.event_type', '=', 'start')
+        .where('te2.event_type', '=', 'end')
         .where('t.scheduled_at', '>=', from)
         .where('t.scheduled_at', '<=', to)
         .executeTakeFirst() as any;
@@ -82,18 +82,22 @@ export class KpiService {
 
     // ── Incidents ─────────────────────────────────────────────────────────────
 
+    // Count only unresolved ("open") incidents in the period
     const incidentCount = await this.db
       .selectFrom('incidents')
       .select(this.db.fn.count<number>('id').as('count'))
       .where('created_at', '>=', from)
       .where('created_at', '<=', to)
+      .where('resolved_at', 'is', null)
       .executeTakeFirst();
 
+    // Most recent unresolved incident in the period
     const lastIncident = await this.db
       .selectFrom('incidents as i')
       .leftJoin('drivers as d', 'd.id', 'i.driver_id')
-      .select(['i.description', 'd.driver_number', 'd.full_name'])
+      .select(['i.notes', 'd.driver_number', 'd.full_name'])
       .where('i.created_at', '>=', from)
+      .where('i.resolved_at', 'is', null)
       .orderBy('i.created_at', 'desc')
       .limit(1)
       .executeTakeFirst() as any;
@@ -115,12 +119,23 @@ export class KpiService {
 
     // ── Trajets non effectués par cause ───────────────────────────────────────
 
+    // Trips explicitly cancelled
     const missedRows = await this.db
       .selectFrom('trips')
       .select(['notes'])
       .where('scheduled_at', '>=', from)
       .where('scheduled_at', '<=', to)
-      .where('status', 'not in', ['completed', 'pending', 'scheduled'])
+      .where('status', '=', 'cancelled')
+      .execute() as any[];
+
+    // Driver replacements: original driver effectively missed the trip
+    const replacedRows = await this.db
+      .selectFrom('planning_audit as pa')
+      .innerJoin('trips as t', 't.id', 'pa.trip_id')
+      .select([sql<string>`pa.after_val->>'reason'`.as('reason')])
+      .where('pa.action', '=', 'driver_replaced')
+      .where('t.scheduled_at', '>=', from)
+      .where('t.scheduled_at', '<=', to)
       .execute() as any[];
 
     const causeCounts: Record<string, number> = {
@@ -129,18 +144,16 @@ export class KpiService {
       'Météo / route bloquée': 0,
       'Autre': 0,
     };
-    for (const { notes } of missedRows) {
-      const n = (notes ?? '').toLowerCase();
-      if (n.includes('panne') || n.includes('vehicule') || n.includes('moteur')) {
-        causeCounts['Voiture en panne']++;
-      } else if (n.includes('absent') || n.includes('absence') || n.includes('chauffeur')) {
-        causeCounts['Absence chauffeur']++;
-      } else if (n.includes('météo') || n.includes('meteo') || n.includes('route') || n.includes('bloquée') || n.includes('bloque')) {
-        causeCounts['Météo / route bloquée']++;
-      } else {
-        causeCounts['Autre']++;
-      }
-    }
+    const classifyCause = (text: string): string => {
+      const t = (text ?? '').toLowerCase();
+      if (t.includes('panne') || t.includes('vehicule') || t.includes('moteur')) return 'Voiture en panne';
+      if (t.includes('absent') || t.includes('absence')) return 'Absence chauffeur';
+      if (t.includes('météo') || t.includes('meteo') || t.includes('route') || t.includes('bloquée') || t.includes('bloque')) return 'Météo / route bloquée';
+      return 'Autre';
+    };
+    for (const { notes }  of missedRows)   causeCounts[classifyCause(notes)]++;
+    for (const { reason } of replacedRows) causeCounts[classifyCause(reason)]++;
+
     const missedByCause = Object.entries(causeCounts)
       .map(([cause, count]) => ({ cause, count }))
       .sort((a, b) => b.count - a.count);
@@ -170,7 +183,7 @@ export class KpiService {
 
     const totalTrips     = Number(totalStats?.total_trips     ?? 0);
     const completed      = Number(totalStats?.completed_trips  ?? 0);
-    const missed         = Number(totalStats?.missed_trips     ?? 0);
+    const missed         = Number(totalStats?.missed_trips     ?? 0) + replacedRows.length;
     const delayed        = Number(totalStats?.delayed_trips    ?? 0);
     const totalRevenue   = parseFloat(String(totalStats?.total_revenue ?? 0));
     const avgRevPerTrip  = parseFloat(String(totalStats?.avg_revenue_per_trip ?? 0));

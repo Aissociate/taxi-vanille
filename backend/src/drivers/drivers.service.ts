@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { Kysely, sql } from 'kysely';
 import { DB_TOKEN } from '../database/database.module';
 import { NotificationsService } from '../common/notifications.service';
+import { AuditService } from '../common/audit.service';
 import { CreateDriverDto, UpdateDriverDto, CreateAdvanceDto, AddRepaymentDto, DeclareOdometerDto } from './drivers.dto';
 import { startOfDay, endOfDay, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
 
@@ -11,6 +12,7 @@ export class DriversService {
   constructor(
     @Inject(DB_TOKEN) private readonly db: Kysely<any>,
     private readonly notifications: NotificationsService,
+    private readonly audit: AuditService,
   ) {}
 
   async findAll(activeOnly = true) {
@@ -31,7 +33,7 @@ export class DriversService {
     return driver;
   }
 
-  async create(dto: CreateDriverDto) {
+  async create(dto: CreateDriverDto, performedBy?: string) {
     const existing = await this.db
       .selectFrom('drivers')
       .select('id')
@@ -45,10 +47,18 @@ export class DriversService {
       .values({ ...dto, pin_hash, pin: undefined } as any)
       .returning(['id', 'driver_number', 'full_name', 'active'])
       .execute();
+
+    await this.audit.log({
+      entityType: 'driver', entityId: driver.id,
+      action: 'driver_created',
+      performedBy,
+      after: { driver_number: driver.driver_number, full_name: driver.full_name },
+    });
     return driver;
   }
 
-  async update(id: string, dto: UpdateDriverDto) {
+  async update(id: string, dto: UpdateDriverDto, performedBy?: string) {
+    const before = await this.findOne(id).catch(() => null);
     const updates: any = { ...dto };
     if (dto.pin) {
       updates.pin_hash = await bcrypt.hash(dto.pin, 12);
@@ -61,10 +71,21 @@ export class DriversService {
       .returning(['id', 'driver_number', 'full_name', 'phone', 'address', 'tax_id', 'invoice_period', 'vehicle_seats', 'active', 'created_at'])
       .execute();
     if (!driver) throw new NotFoundException('Chauffeur introuvable');
+
+    const safeDto = { ...dto };
+    delete (safeDto as any).pin; // never log PIN
+    await this.audit.log({
+      entityType: 'driver', entityId: id,
+      action: 'driver_updated',
+      performedBy,
+      before: before ? { driver_number: (before as any).driver_number, phone: (before as any).phone, address: (before as any).address } : null,
+      after:  safeDto,
+    });
     return driver;
   }
 
-  async setActive(id: string, active: boolean) {
+  async setActive(id: string, active: boolean, performedBy?: string) {
+    const before = await this.db.selectFrom('drivers').select(['driver_number', 'full_name', 'active', 'fcm_token']).where('id', '=', id).executeTakeFirst() as any;
     await this.db.updateTable('drivers').set({ active }).where('id', '=', id).execute();
 
     if (!active) {
@@ -76,11 +97,18 @@ export class DriversService {
         .where('status', '!=', 'cancelled')
         .execute();
 
-      const driver = await this.db.selectFrom('drivers').select('fcm_token').where('id', '=', id).executeTakeFirst();
-      if (driver?.fcm_token) {
-        await this.notifications.sendToDevice(driver.fcm_token, 'Compte désactivé', 'Votre compte a été désactivé. Contactez la direction.');
+      if (before?.fcm_token) {
+        await this.notifications.sendToDevice(before.fcm_token, 'Compte désactivé', 'Votre compte a été désactivé. Contactez la direction.');
       }
     }
+
+    await this.audit.log({
+      entityType: 'driver', entityId: id,
+      action: active ? 'driver_activated' : 'driver_deactivated',
+      performedBy,
+      before:  { active: before?.active ?? !active },
+      after:   { active, driver_number: before?.driver_number, full_name: before?.full_name },
+    });
 
     return { id, active };
   }
@@ -274,16 +302,29 @@ export class DriversService {
     return this.getMileageForMonth(driverId, dto.month);
   }
 
+  async getMyProfile(driverId: string) {
+    const driver = await this.db
+      .selectFrom('drivers')
+      .select(['id', 'driver_number', 'full_name', 'phone', 'vehicle_seats', 'invoice_period'])
+      .where('id', '=', driverId)
+      .executeTakeFirst();
+    if (!driver) throw new Error('Driver not found');
+    return driver;
+  }
+
   async getTodaySchedule(driverId: string) {
     const today = new Date();
-    return this.db
+    const trips = await this.db
       .selectFrom('trips')
       .leftJoin('clients', 'clients.id', 'trips.client_id')
       .select([
         'trips.id',
         'trips.scheduled_at',
+        'trips.estimated_arrival_at',
         'trips.status',
         'trips.stops_order',
+        'trips.direction',
+        'trips.passenger_count',
         'trips.amount',
         'trips.notes',
         'clients.name as client_name',
@@ -293,6 +334,34 @@ export class DriversService {
       .where('trips.scheduled_at', '<=', endOfDay(today))
       .where('trips.status', '!=', 'cancelled')
       .orderBy('trips.scheduled_at')
-      .execute();
+      .execute() as any[];
+
+    // Enrichir avec les détails des arrêts (stops_order = tableau d'UUIDs)
+    const allStopIds = trips.flatMap(t => {
+      try { return Array.isArray(t.stops_order) ? t.stops_order : JSON.parse(t.stops_order || '[]'); }
+      catch { return []; }
+    }).filter(Boolean);
+
+    const stopMap: Record<string, any> = {};
+    if (allStopIds.length) {
+      const stops = await this.db
+        .selectFrom('stops')
+        .select(['id', 'name', 'address', 'lat', 'lng'])
+        .where('id', 'in', allStopIds)
+        .execute() as any[];
+      stops.forEach(s => { stopMap[s.id] = s; });
+    }
+
+    return trips.map(t => {
+      const ids: string[] = (() => {
+        try { return Array.isArray(t.stops_order) ? t.stops_order : JSON.parse(t.stops_order || '[]'); }
+        catch { return []; }
+      })();
+      return {
+        ...t,
+        stops: ids.map(id => stopMap[id] ?? { id, name: '—', address: '' }),
+        stops_count: ids.length,
+      };
+    });
   }
 }

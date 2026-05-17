@@ -6,11 +6,13 @@ import { api } from '@/lib/api';
 
 interface AuditEntry {
   id: string;
-  trip_id: string | null;
-  action: string;
-  before_val: string | null;
-  after_val: string | null;
-  created_at: string;
+  trip_id:     string | null;
+  entity_type: string | null;
+  entity_id:   string | null;
+  action:      string;
+  before_val:  string | null;
+  after_val:   string | null;
+  created_at:  string;
   performed_by_name: string | null;
 }
 
@@ -28,10 +30,31 @@ interface AuditGroup {
 }
 
 const ACTION_META: Record<string, { label: string; kind: string }> = {
-  driver_replaced: { label: 'Remplacement', kind: 'replace' },
-  created:         { label: 'Course ajoutée', kind: 'add' },
-  updated:         { label: 'Modification', kind: 'edit' },
-  cancelled:       { label: 'Annulation', kind: 'remove' },
+  // Planning
+  driver_replaced:    { label: 'Remplacement chauffeur', kind: 'replace'  },
+  created:            { label: 'Course ajoutée',          kind: 'add'      },
+  updated:            { label: 'Modification course',     kind: 'edit'     },
+  cancelled:          { label: 'Annulation course',       kind: 'remove'   },
+  // Incidents
+  incident_reported:  { label: 'Incident signalé',       kind: 'incident' },
+  incident_resolved:  { label: 'Incident résolu',        kind: 'resolve'  },
+  // Auth
+  web_login:          { label: 'Connexion web',           kind: 'system'   },
+  driver_login:       { label: 'Connexion chauffeur',     kind: 'system'   },
+  logout:             { label: 'Déconnexion',             kind: 'system'   },
+  // Drivers
+  driver_created:     { label: 'Chauffeur créé',          kind: 'add'      },
+  driver_updated:     { label: 'Chauffeur modifié',       kind: 'edit'     },
+  driver_activated:   { label: 'Chauffeur activé',        kind: 'resolve'  },
+  driver_deactivated: { label: 'Chauffeur désactivé',     kind: 'remove'   },
+  // Clients
+  client_created:     { label: 'Client créé',             kind: 'add'      },
+  client_updated:     { label: 'Client modifié',          kind: 'edit'     },
+  // Invoices
+  invoice_validated:  { label: 'Facture validée',         kind: 'resolve'  },
+  invoice_paid:       { label: 'Paiement enregistré',     kind: 'add'      },
+  // Settings
+  settings_updated:   { label: 'Paramètres modifiés',     kind: 'edit'     },
 };
 
 function groupByDay(entries: AuditEntry[]): AuditGroup[] {
@@ -42,14 +65,40 @@ function groupByDay(entries: AuditEntry[]): AuditGroup[] {
     const meta = ACTION_META[e.action] ?? { label: e.action, kind: 'system' };
     let after: any = {};
     try { after = e.after_val ? JSON.parse(e.after_val) : {}; } catch {}
-    const target = e.trip_id ? `Trip ${e.trip_id.slice(0, 8)}` : (after.driver_id ?? '—');
+
+    // Build a human-readable target string depending on entity_type / action
+    let target: string;
+    const entityType = e.entity_type ?? '';
+    if (entityType === 'setting') {
+      target = `Section : ${e.entity_id ?? after.section ?? '—'}`;
+    } else if (entityType === 'driver') {
+      target = after.driver_number ?? after.full_name ?? (e.entity_id?.slice(0, 8) ?? '—');
+    } else if (entityType === 'client') {
+      target = after.name ?? (e.entity_id?.slice(0, 8) ?? '—');
+    } else if (entityType === 'invoice') {
+      target = after.invoice_number ?? (e.entity_id?.slice(0, 8) ?? '—');
+    } else if (entityType === 'auth') {
+      const who = after.email ?? after.driver_number ?? '';
+      const role = after.role ?? after.type ?? '';
+      target = [who, role].filter(Boolean).join(' · ') || (e.entity_id?.slice(0, 8) ?? '—');
+    } else if (e.action === 'incident_reported') {
+      const types = Array.isArray(after.types) ? after.types.join(', ') : (after.types ?? '');
+      const driverNum = after.driver_number ?? '';
+      target = `${driverNum}${driverNum && types ? ' · ' : ''}${types}`;
+      if (!target) target = e.trip_id ? `Trip ${e.trip_id.slice(0, 8)}` : '—';
+    } else if (e.action === 'incident_resolved') {
+      target = after.incident_id ? `Incident ${String(after.incident_id).slice(0, 8)}` : (e.trip_id ? `Trip ${e.trip_id.slice(0, 8)}` : '—');
+    } else {
+      target = e.trip_id ? `Trip ${e.trip_id.slice(0, 8)}` : (after.driver_id ?? '—');
+    }
+
     if (!map.has(dayKey)) map.set(dayKey, { day: dayKey, items: [] });
     map.get(dayKey)!.items.push({
       t: d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
-      who: e.performed_by_name ?? 'Système',
+      who: e.performed_by_name ?? (e.action === 'incident_reported' ? 'Chauffeur (app)' : 'Système'),
       action: meta.label,
       target: String(target),
-      reason: after.reason,
+      reason: after.reason ?? after.notes,
       kind: meta.kind,
     });
   }
@@ -63,11 +112,11 @@ export default function AuditPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const limits: Record<string, number> = { '7 j': 50, '30 j': 200, 'Personnalisé': 500 };
+  const limits: Record<string, number> = { '7 j': 100, '30 j': 500, 'Personnalisé': 1000 };
 
   useEffect(() => {
     setLoading(true);
-    api.get(`/planning/audit?limit=${limits[range] ?? 200}`)
+    api.get(`/planning/audit?limit=${limits[range] ?? 500}`)
       .then(res => {
         const data: AuditEntry[] = res.data;
         setTotal(data.length);
@@ -78,7 +127,8 @@ export default function AuditPage() {
   }, [range]);
 
   const kindFilters: Record<string, string> = {
-    'Remplacements': 'replace', 'Ajouts': 'add', 'Annulations': 'remove',
+    'Incidents': 'incident', 'Remplacements': 'replace', 'Ajouts': 'add',
+    'Annulations': 'remove', 'Connexions': 'system', 'Modifications': 'edit',
   };
 
   const filtered = groups.map(g => ({
@@ -86,11 +136,11 @@ export default function AuditPage() {
     items: filter === 'Tous' ? g.items : g.items.filter(it => it.kind === kindFilters[filter]),
   })).filter(g => g.items.length > 0);
 
-  const filters = ['Tous', 'Remplacements', 'Ajouts', 'Annulations'];
+  const filters = ['Tous', 'Incidents', 'Remplacements', 'Ajouts', 'Annulations', 'Modifications', 'Connexions'];
 
   return (
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-      <PageBar title="Audit log · planning" sub={`Direction · ${total} modification${total !== 1 ? 's' : ''} · ${range}`}
+      <PageBar title="Audit log · toutes actions" sub={`Direction · ${total} événement${total !== 1 ? 's' : ''} · ${range}`}
         actions={[{l:'Exporter CSV'},{l:'Restaurer version'}]}/>
 
       <div style={{padding:'10px 24px',borderBottom:'1px dashed var(--stroke3)',display:'flex',gap:8,

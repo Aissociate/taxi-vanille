@@ -17,11 +17,14 @@ export class PlanningService {
       .selectFrom('trips')
       .leftJoin('drivers', 'drivers.id', 'trips.driver_id')
       .leftJoin('clients', 'clients.id', 'trips.client_id')
+      .leftJoin('client_lines as cl', 'cl.id', 'trips.line_id')
       .select([
         'trips.id', 'trips.scheduled_at', 'trips.estimated_arrival_at', 'trips.status', 'trips.stops_order',
         'trips.amount', 'trips.notes', 'trips.passenger_count', 'trips.is_unplanned', 'trips.direction',
+        'trips.line_id',
         'drivers.id as driver_id', 'drivers.driver_number', 'drivers.full_name as driver_name',
         'clients.id as client_id', 'clients.name as client_name',
+        'cl.code as line_code', 'cl.name as line_name', 'cl.badge as line_badge', 'cl.color as line_color',
       ]);
 
     if (filters.date) {
@@ -42,8 +45,25 @@ export class PlanningService {
       .leftJoin('clients', 'clients.id', 'trips.client_id')
       .selectAll()
       .where('trips.id', '=', id)
-      .executeTakeFirst();
+      .executeTakeFirst() as any;
     if (!trip) throw new NotFoundException('Trajet introuvable');
+
+    // Enrichir stops_order avec les détails des arrêts
+    const ids: string[] = (() => {
+      try { return Array.isArray(trip.stops_order) ? trip.stops_order : JSON.parse(trip.stops_order || '[]'); }
+      catch { return []; }
+    })();
+    if (ids.length) {
+      const stops = await this.db
+        .selectFrom('stops')
+        .select(['id', 'name', 'address', 'lat', 'lng'])
+        .where('id', 'in', ids)
+        .execute() as any[];
+      const map: Record<string, any> = Object.fromEntries(stops.map(s => [s.id, s]));
+      trip.stops = ids.map(sid => map[sid] ?? { id: sid, name: '—', address: '' });
+    } else {
+      trip.stops = [];
+    }
     return trip;
   }
 
@@ -61,6 +81,7 @@ export class PlanningService {
         passenger_count:      dto.passenger_count,
         is_unplanned:         dto.is_unplanned ?? false,
         direction:            dto.direction as any,
+        line_id:              dto.line_id,
         created_by:           createdBy,
       })
       .returning(['id', 'scheduled_at', 'status'])
@@ -103,12 +124,14 @@ export class PlanningService {
     return { ok: true };
   }
 
-  async getAudit(tripId?: string, limit = 50) {
+  async getAudit(tripId?: string, entityType?: string, entityId?: string, limit = 50) {
     let q = this.db
       .selectFrom('planning_audit as a')
       .leftJoin('web_users as u', 'u.id', 'a.performed_by')
-      .select(['a.id', 'a.trip_id', 'a.action', 'a.before_val', 'a.after_val', 'a.created_at', 'u.full_name as performed_by_name']);
-    if (tripId) q = q.where('a.trip_id', '=', tripId);
+      .select(['a.id', 'a.trip_id', 'a.entity_type', 'a.entity_id', 'a.action', 'a.before_val', 'a.after_val', 'a.created_at', 'u.full_name as performed_by_name']);
+    if (tripId)     q = q.where('a.trip_id',     '=', tripId);
+    if (entityType) q = q.where('a.entity_type', '=', entityType);
+    if (entityId)   q = q.where('a.entity_id',   '=', entityId);
     return q.orderBy('a.created_at', 'desc').limit(limit).execute();
   }
 

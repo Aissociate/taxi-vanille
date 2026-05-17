@@ -1284,7 +1284,7 @@ function ConfirmDeactivateModal({ driver, onClose, onConfirm }: {
 export default function DriversPage() {
   const FALLBACK: ApiDriver[] = LOCAL_ALL.map((d, i) => ({
     id: String(i), driver_number: d.code, full_name: d.nom,
-    phone: (d as any).tel, is_active: true, invoice_period: 'weekly' as const,
+    phone: (d as any).tel, active: true, invoice_period: 'weekly' as const,
   }));
 
   const { demo } = useDemoMode();

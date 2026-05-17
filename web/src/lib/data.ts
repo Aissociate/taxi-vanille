@@ -122,7 +122,8 @@ export const AUDIT = [
 ];
 export const kindColor: Record<string,string> = {
   replace:'var(--brand)',add:'var(--success)',remove:'var(--danger)',
-  validate:'var(--stroke)',edit:'var(--info)',system:'var(--stroke3)'
+  validate:'var(--stroke)',edit:'var(--info)',system:'var(--stroke3)',
+  incident:'#dc2626', resolve:'var(--success)',
 };
 
 export const TODAY_DOC = new Date('2026-05-08');

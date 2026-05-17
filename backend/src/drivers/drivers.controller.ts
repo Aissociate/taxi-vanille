@@ -16,6 +16,40 @@ export class DriversController {
     private readonly storage: StorageService,
   ) {}
 
+  // ── Routes "me" — MUST be before :id routes ──────────────────────────────
+
+  // Profil du chauffeur connecté (app Android)
+  @Get('me')
+  myProfile(@Request() req) {
+    return this.service.getMyProfile(req.user.userId);
+  }
+
+  // Planning du jour pour le chauffeur connecté (app Android)
+  @Get('me/schedule/today')
+  mySchedule(@Request() req) {
+    return this.service.getTodaySchedule(req.user.userId);
+  }
+
+  // Android : lecture du mois courant
+  @Get('me/mileage/current')
+  getCurrentMileage(@Request() req) {
+    const month = new Date().toISOString().slice(0, 7);
+    return this.service.getMileageForMonth(req.user.userId, month);
+  }
+
+  // Android : déclaration début ou fin de mois
+  @Post('me/mileage')
+  declareOdometer(@Request() req, @Body() dto: DeclareOdometerDto) {
+    return this.service.declareOdometer(req.user.userId, dto);
+  }
+
+  @Put('me/fcm-token')
+  updateFcmToken(@Request() req, @Body() dto: UpdateFcmTokenDto) {
+    return this.service.updateFcmToken(req.user.userId, dto.token);
+  }
+
+  // ── Routes génériques ─────────────────────────────────────────────────────
+
   @Get()
   @Roles('direction', 'coordinator')
   findAll(@Query('active') active?: string) {
@@ -36,31 +70,20 @@ export class DriversController {
 
   @Post()
   @Roles('direction')
-  create(@Body() dto: CreateDriverDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateDriverDto, @Request() req: any) {
+    return this.service.create(dto, req.user?.sub ?? req.user?.id);
   }
 
   @Put(':id')
   @Roles('direction')
-  update(@Param('id') id: string, @Body() dto: UpdateDriverDto) {
-    return this.service.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateDriverDto, @Request() req: any) {
+    return this.service.update(id, dto, req.user?.sub ?? req.user?.id);
   }
 
   @Put(':id/deactivate')
   @Roles('direction')
-  deactivate(@Param('id') id: string) {
-    return this.service.setActive(id, false);
-  }
-
-  @Put('me/fcm-token')
-  updateFcmToken(@Request() req, @Body() dto: UpdateFcmTokenDto) {
-    return this.service.updateFcmToken(req.user.userId, dto.token);
-  }
-
-  // Planning du jour pour le chauffeur connecté (app Android)
-  @Get('me/schedule/today')
-  mySchedule(@Request() req) {
-    return this.service.getTodaySchedule(req.user.userId);
+  deactivate(@Param('id') id: string, @Request() req: any) {
+    return this.service.setActive(id, false, req.user?.sub ?? req.user?.id);
   }
 
   // ── Acomptes ──────────────────────────────────────────────────────────────
@@ -104,19 +127,6 @@ export class DriversController {
   @Roles('direction', 'coordinator')
   getMileages(@Param('id') id: string) {
     return this.service.findMileages(id);
-  }
-
-  // Android : lecture du mois courant
-  @Get('me/mileage/current')
-  getCurrentMileage(@Request() req) {
-    const month = new Date().toISOString().slice(0, 7);
-    return this.service.getMileageForMonth(req.user.userId, month);
-  }
-
-  // Android : déclaration début ou fin de mois
-  @Post('me/mileage')
-  declareOdometer(@Request() req, @Body() dto: DeclareOdometerDto) {
-    return this.service.declareOdometer(req.user.userId, dto);
   }
 
   // Web : saisie kilométrage pour n'importe quel chauffeur (coordinateur / direction)

@@ -2,6 +2,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
+import { useDemoMode } from '@/lib/demo';
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES
@@ -1405,6 +1406,7 @@ function PeriodSelector({ period, onPeriod, cf, ct, onCf, onCt }: {
    PAGE
 ═══════════════════════════════════════════════════════════════ */
 export default function ClientsPage() {
+  const { demo } = useDemoMode();
   const [period,       setPeriod]       = useState<Period>('mois');
   const [customFrom,   setCustomFrom]   = useState('2026-03-01');
   const [customTo,     setCustomTo]     = useState('2026-03-31');
@@ -1413,10 +1415,11 @@ export default function ClientsPage() {
 
   /* ── Fetch liste des lignes depuis l'API ── */
   useEffect(() => {
+    if (demo) { setClients(CLIENTS); return; }
     api.get('/clients/lines')
       .then(res => {
         const lines: Record<string,unknown>[] = res.data;
-        if (!Array.isArray(lines) || !lines.length) return;
+        if (!Array.isArray(lines) || !lines.length) { setClients([]); return; }
         const mapped: ClientDef[] = lines.map(l => {
           // Fallback sur les données statiques pour les champs non fournis par l'API
           const fb = CLIENTS.find(c =>
@@ -1431,7 +1434,7 @@ export default function ClientsPage() {
             sub:          String(l.sub  ?? fb.sub),
             badge:        String(l.badge ?? fb.badge),
             color:        String(l.color ?? fb.color),
-            data:         fb.data, // données statiques en attendant l'ouverture du rapport
+            data:         [],
             dir_matin_a:  String(l.dir_matin_a ?? fb.dir_matin_a),
             dir_matin_r:  String(l.dir_matin_r ?? fb.dir_matin_r),
             dir_am_a:     String(l.dir_am_a    ?? fb.dir_am_a),
@@ -1448,8 +1451,8 @@ export default function ClientsPage() {
         });
         setClients(mapped);
       })
-      .catch(() => { /* garde CLIENTS statiques */ });
-  }, []);
+      .catch(() => setClients([]));
+  }, [demo]);
 
   const activeClient = clients.find(c => c.id === activeReport) ?? null;
   const range        = getDateRange(period, customFrom, customTo);
