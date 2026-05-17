@@ -12,7 +12,7 @@ export class PlanningService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async findAll(filters: { date?: string; driverId?: string; clientId?: string; status?: string }) {
+  async findAll(filters: { date?: string; from?: string; to?: string; driverId?: string; clientId?: string; status?: string }) {
     let q = this.db
       .selectFrom('trips')
       .leftJoin('drivers', 'drivers.id', 'trips.driver_id')
@@ -30,6 +30,9 @@ export class PlanningService {
     if (filters.date) {
       const d = new Date(filters.date);
       q = q.where('trips.scheduled_at', '>=', startOfDay(d)).where('trips.scheduled_at', '<=', endOfDay(d));
+    } else if (filters.from || filters.to) {
+      if (filters.from) q = q.where('trips.scheduled_at', '>=', startOfDay(new Date(filters.from)));
+      if (filters.to)   q = q.where('trips.scheduled_at', '<=', endOfDay(new Date(filters.to)));
     }
     if (filters.driverId) q = q.where('trips.driver_id', '=', filters.driverId);
     if (filters.clientId) q = q.where('trips.client_id', '=', filters.clientId);

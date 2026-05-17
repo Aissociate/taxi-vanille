@@ -1298,6 +1298,8 @@ export default function DriversPage() {
   const [period, setPeriod] = useState('semaine');
   const [kpi, setKpi] = useState<{ courses: number; passagers: number; ca: string; incidents: number; unplanned: number } | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
+  const [weekTrips, setWeekTrips] = useState<any[]>([]);
+  const [weekTripsLoading, setWeekTripsLoading] = useState(false);
 
   useEffect(() => {
     if (demo) {
@@ -1324,6 +1326,21 @@ export default function DriversPage() {
       .catch(() => setKpi(null))
       .finally(() => setKpiLoading(false));
   }, [selId, period]);
+
+  // Fetch trips de la semaine courante pour le programme de ligne dynamique
+  useEffect(() => {
+    if (!selId || demo) { setWeekTrips([]); return; }
+    const now = new Date();
+    const day = now.getDay();
+    const mon = new Date(now); mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    setWeekTripsLoading(true);
+    api.get(`/planning?driver_id=${selId}&from=${fmt(mon)}&to=${fmt(sun)}`)
+      .then(res => setWeekTrips(res.data ?? []))
+      .catch(() => setWeekTrips([]))
+      .finally(() => setWeekTripsLoading(false));
+  }, [selId, demo]);
 
   const filtered = drivers.filter(d =>
     search === '' ||
@@ -1630,10 +1647,38 @@ export default function DriversPage() {
                     );
                   })}
                 </>
-              ) : (
+              ) : weekTripsLoading ? (
+                <div style={{ padding: '16px 0', fontSize: 12, color: 'var(--text-3)', textAlign: 'center' }}>Chargement…</div>
+              ) : weekTrips.length === 0 ? (
                 <div style={{ padding: '20px 0', fontSize: 12, color: 'var(--text-3)', textAlign: 'center' }}>
-                  Aucun programme configuré pour ce chauffeur
+                  Aucun trajet planifié cette semaine
                 </div>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '68px 80px 1fr 90px', gap: 6,
+                    paddingBottom: 6, borderBottom: '1px solid var(--border)',
+                    fontSize: 9, fontFamily: 'var(--font-mono)', letterSpacing: '.1em',
+                    textTransform: 'uppercase', color: 'var(--text-3)' }}>
+                    <span>Jour</span><span>Heure</span><span>Ligne / Client</span><span style={{ textAlign: 'right' }}>Statut</span>
+                  </div>
+                  {weekTrips.map(t => {
+                    const d = new Date(t.scheduled_at);
+                    const dayLabel = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][d.getDay()];
+                    const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    const lineLabel = t.line_code ? `${t.line_code}${t.line_name ? ' · ' + t.line_name : ''}` : (t.client_name ?? '—');
+                    const statusColor = t.status === 'completed' ? 'var(--success)' : t.status === 'cancelled' ? 'var(--danger)' : t.status === 'in_progress' ? 'var(--warn)' : 'var(--text-3)';
+                    const statusLabel = t.status === 'completed' ? 'Terminé' : t.status === 'cancelled' ? 'Annulé' : t.status === 'in_progress' ? 'En cours' : 'Planifié';
+                    return (
+                      <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '68px 80px 1fr 90px', gap: 6,
+                        padding: '7px 0', borderBottom: '1px dashed var(--border)', alignItems: 'center' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700 }}>{dayLabel}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, color: lineColor }}>{time}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lineLabel}</span>
+                        <span style={{ textAlign: 'right', fontSize: 10, fontFamily: 'var(--font-mono)', color: statusColor, fontWeight: 600 }}>{statusLabel}</span>
+                      </div>
+                    );
+                  })}
+                </>
               )}
             </div>
           </div>

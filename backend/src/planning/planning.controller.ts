@@ -12,12 +12,14 @@ export class PlanningController {
 
   @Get()
   findAll(
-    @Query('date') date?: string,
+    @Query('date')      date?: string,
+    @Query('from')      from?: string,
+    @Query('to')        to?: string,
     @Query('driver_id') driverId?: string,
     @Query('client_id') clientId?: string,
-    @Query('status') status?: string,
+    @Query('status')    status?: string,
   ) {
-    return this.service.findAll({ date, driverId, clientId, status });
+    return this.service.findAll({ date, from, to, driverId, clientId, status });
   }
 
   @Get('audit')
