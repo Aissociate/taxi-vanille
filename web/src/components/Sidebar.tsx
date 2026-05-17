@@ -12,9 +12,10 @@ const NAV = [
   { href: '/map',        label: 'Carte temps réel',  icon: '◉', dot: true, badge: '2' },
   { href: '/drivers',    label: 'Chauffeurs',         icon: '◎' },
   { href: '/clients',    label: 'Clients',            icon: '◷' },
-  { href: '/invoices',   label: 'Factures',           icon: '◈', badge: '3' },
+  { href: '/invoices',   label: 'Factures',           icon: '◈', badge: '3', directionOnly: true },
   { href: '/rapports',   label: 'Rapports',           icon: '◻' },
   { href: '/incidents',  label: 'Audit log',          icon: '◬' },
+  { href: '/users',      label: 'Utilisateurs',       icon: '◑', directionOnly: true },
   { href: '/settings',   label: 'Paramétrage',        icon: '◧' },
 ];
 
@@ -52,7 +53,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="sidebar-nav">
-        {NAV.map(({ href, label, dot, badge }) => {
+        {NAV.filter(item => !item.directionOnly || user?.role === 'direction').map(({ href, label, dot, badge }) => {
           const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
           return (
             <Link key={href} href={href}

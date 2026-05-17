@@ -13,7 +13,10 @@ import { CreateIncidentDto } from './incidents.dto';
 export class IncidentsController {
   constructor(private readonly service: IncidentsService) {}
 
+  // Création d'un incident — ouvert aux chauffeurs (app Android) et au dashboard
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('driver', 'direction', 'coordinator')
   @UseInterceptors(FileInterceptor('audio', { limits: { fileSize: 2 * 1024 * 1024 } }))
   create(
     @Body() dto: CreateIncidentDto,

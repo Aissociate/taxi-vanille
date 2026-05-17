@@ -116,6 +116,71 @@ export class AuthService {
     }
   }
 
+  // ── Gestion utilisateurs web ──────────────────────────────────────────────
+
+  async listUsers() {
+    return this.db
+      .selectFrom('web_users')
+      .select(['id', 'email', 'full_name', 'role', 'active', 'created_at'])
+      .orderBy('created_at', 'asc')
+      .execute();
+  }
+
+  async createUser(dto: { email: string; full_name: string; role: string; password: string }, performedBy?: string) {
+    const hash = await bcrypt.hash(dto.password, 10);
+    const [user] = await this.db
+      .insertInto('web_users')
+      .values({
+        email:         dto.email.toLowerCase().trim(),
+        full_name:     dto.full_name.trim(),
+        role:          dto.role as any,
+        password_hash: hash,
+        active:        true,
+      })
+      .returning(['id', 'email', 'full_name', 'role', 'active', 'created_at'])
+      .execute();
+    await this.audit.log({ entityType: 'auth', entityId: user.id, action: 'user_created', performedBy, after: { email: user.email, role: user.role } });
+    return user;
+  }
+
+  async updateUser(id: string, dto: { email?: string; full_name?: string; role?: string; active?: boolean }, performedBy?: string) {
+    const before = await this.db.selectFrom('web_users').select(['email', 'full_name', 'role', 'active']).where('id', '=', id).executeTakeFirst();
+    const updates: any = { updated_at: new Date() };
+    if (dto.email     != null) updates.email     = dto.email.toLowerCase().trim();
+    if (dto.full_name != null) updates.full_name = dto.full_name.trim();
+    if (dto.role      != null) updates.role      = dto.role;
+    if (dto.active    != null) updates.active    = dto.active;
+    const [user] = await this.db.updateTable('web_users').set(updates).where('id', '=', id).returning(['id', 'email', 'full_name', 'role', 'active']).execute();
+    await this.audit.log({ entityType: 'auth', entityId: id, action: 'user_updated', performedBy, before, after: updates });
+    return user;
+  }
+
+  async changePassword(id: string, password: string, performedBy?: string) {
+    const hash = await bcrypt.hash(password, 10);
+    await this.db.updateTable('web_users').set({ password_hash: hash, updated_at: new Date() }).where('id', '=', id).execute();
+    await this.audit.log({ entityType: 'auth', entityId: id, action: 'user_password_changed', performedBy });
+    return { ok: true };
+  }
+
+  async deleteUser(id: string, performedBy?: string) {
+    // Sécurité : ne pas supprimer le dernier admin direction actif
+    const user = await this.db.selectFrom('web_users').select(['email', 'role']).where('id', '=', id).executeTakeFirst();
+    if (user?.role === 'direction') {
+      const dirCount = await this.db.selectFrom('web_users').select(this.db.fn.count<number>('id').as('c')).where('role', '=', 'direction').where('active', '=', true).executeTakeFirst();
+      if (Number((dirCount as any)?.c ?? 0) <= 1) throw new Error('Impossible de supprimer le dernier compte direction');
+    }
+    // Nullifier les références FK dans planning_audit avant suppression
+    try {
+      await this.db.updateTable('planning_audit' as any)
+        .set({ performed_by: null } as any)
+        .where('performed_by' as any, '=', id)
+        .execute();
+    } catch { /* non-bloquant */ }
+    await this.db.deleteFrom('web_users').where('id', '=', id).execute();
+    await this.audit.log({ entityType: 'auth', entityId: id, action: 'user_deleted', performedBy, before: user });
+    return { ok: true };
+  }
+
   private async issueTokens(payload: { sub: string; type: string; role?: string } & Record<string, any>) {
     const accessToken = this.jwt.sign(payload, { expiresIn: '15m' });
     const refreshRaw = randomBytes(40).toString('hex');

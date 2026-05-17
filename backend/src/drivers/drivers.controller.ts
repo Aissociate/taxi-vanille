@@ -17,21 +17,25 @@ export class DriversController {
   ) {}
 
   // ── Routes "me" — MUST be before :id routes ──────────────────────────────
+  // Ces routes sont réservées aux chauffeurs (app Android)
 
   // Profil du chauffeur connecté (app Android)
   @Get('me')
+  @Roles('driver')
   myProfile(@Request() req) {
     return this.service.getMyProfile(req.user.userId);
   }
 
   // Planning du jour pour le chauffeur connecté (app Android)
   @Get('me/schedule/today')
+  @Roles('driver')
   mySchedule(@Request() req) {
     return this.service.getTodaySchedule(req.user.userId);
   }
 
   // Android : lecture du mois courant
   @Get('me/mileage/current')
+  @Roles('driver')
   getCurrentMileage(@Request() req) {
     const month = new Date().toISOString().slice(0, 7);
     return this.service.getMileageForMonth(req.user.userId, month);
@@ -39,11 +43,13 @@ export class DriversController {
 
   // Android : déclaration début ou fin de mois
   @Post('me/mileage')
+  @Roles('driver')
   declareOdometer(@Request() req, @Body() dto: DeclareOdometerDto) {
     return this.service.declareOdometer(req.user.userId, dto);
   }
 
   @Put('me/fcm-token')
+  @Roles('driver')
   updateFcmToken(@Request() req, @Body() dto: UpdateFcmTokenDto) {
     return this.service.updateFcmToken(req.user.userId, dto.token);
   }

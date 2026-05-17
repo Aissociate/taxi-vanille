@@ -28,11 +28,13 @@ export class SettingsService {
     // Capture previous value before overwriting
     const prev = await this.getSection(section);
 
+    const jsonData = JSON.stringify(data);
+
     await this.db
       .insertInto('settings')
-      .values({ section, data: data as any, updated_at: new Date() } as any)
+      .values({ section, data: jsonData as any, updated_at: new Date() } as any)
       .onConflict(oc => oc.column('section').doUpdateSet({
-        data: data as any,
+        data: jsonData as any,
         updated_at: new Date() as any,
       }))
       .execute();

@@ -360,8 +360,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Ligne 1 : 4 KPI ── */}
-        <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        {/* ── KPI complets (masqués si aucune donnée réelle) ── */}
+        {!noRealData && <><div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <KpiBlock
             label={`CA · ${meta.label}`}
             value={`${fmtEuro(s.total_revenue)} €`}
@@ -572,6 +572,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+        </>}
 
       </div>
     </div>
