@@ -4,7 +4,7 @@ import { DB_TOKEN } from '../database/database.module';
 import { StorageService } from '../common/storage.service';
 import { NotificationsService } from '../common/notifications.service';
 import { AuditService } from '../common/audit.service';
-import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfDay, endOfDay, format } from 'date-fns';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PDFDocument = require('pdfkit');
 
@@ -86,10 +86,21 @@ export class InvoicesService {
     return invoice;
   }
 
-  async generateMonthly(month: string, driverId?: string) {
-    const [year, mon] = month.split('-').map(Number);
-    const start = startOfMonth(new Date(year, mon - 1, 1));
-    const end = endOfMonth(start);
+  async generateMonthly(month?: string, driverId?: string, from?: string, to?: string) {
+    let start: Date, end: Date, derivedMonth: string;
+    if (from && to) {
+      start = startOfDay(new Date(from));
+      end   = endOfDay(new Date(to));
+      derivedMonth = format(start, 'yyyy-MM');
+    } else if (month) {
+      const [y, m] = month.split('-').map(Number);
+      start = startOfMonth(new Date(y, m - 1, 1));
+      end   = endOfMonth(start);
+      derivedMonth = month;
+    } else {
+      throw new Error('month ou from+to requis');
+    }
+    const [year, mon] = derivedMonth.split('-').map(Number);
 
     const config = await this.db
       .selectFrom('pricing_config')
@@ -113,7 +124,7 @@ export class InvoicesService {
         .selectFrom('invoices')
         .select('id')
         .where('driver_id', '=', driver.id)
-        .where('month', '=', month)
+        .where('month', '=', derivedMonth)
         .executeTakeFirst();
       if (existing) { results.push({ id: existing.id, skipped: true, reason: 'already_exists' }); continue; }
 
@@ -144,7 +155,7 @@ export class InvoicesService {
         .selectFrom('driver_mileages')
         .selectAll()
         .where('driver_id', '=', driver.id)
-        .where('month', '=', month)
+        .where('month', '=', derivedMonth)
         .executeTakeFirst();
       const kmTotal = (mileage?.km_end != null && mileage?.km_start != null)
         ? (mileage.km_end - mileage.km_start) : 0;
@@ -170,7 +181,11 @@ export class InvoicesService {
           (await this.db.selectFrom('invoices').select(this.db.fn.count<number>('id').as('c')).executeTakeFirst() as any).c
         ) || 0) + 1
       ).padStart(4, '0');
-      const invoiceNumber = `RET-${year}-${String(mon).padStart(2, '0')}-${driver.driver_number}`;
+      // Format court pour respecter VARCHAR(30) : RET-YYYY-MM ou RET-MMDD-MMDD
+      const periodTag = (from && to)
+        ? `${from.slice(5).replace('-', '')}${to.slice(5).replace('-', '')}`  // ex: 05180518
+        : `${year}-${String(mon).padStart(2, '0')}`;
+      const invoiceNumber = `RET-${periodTag}-${driver.driver_number}`;
 
       const [invoice] = await this.db
         .insertInto('invoices')
@@ -179,7 +194,7 @@ export class InvoicesService {
           driver_id: driver.id,
           period_start: format(start, 'yyyy-MM-dd'),
           period_end: format(end, 'yyyy-MM-dd'),
-          month,
+          month: derivedMonth,
           trip_ids: trips.map(t => t.id),
           amount_ht: subtotal,
           amount_ttc: subtotal,

@@ -41,8 +41,8 @@ export class InvoicesController {
 
   @Post('generate')
   @Roles('direction')
-  generate(@Body() body: { driver_id?: string; month: string }) {
-    return this.service.generateMonthly(body.month, body.driver_id);
+  generate(@Body() body: { driver_id?: string; month?: string; from?: string; to?: string }) {
+    return this.service.generateMonthly(body.month, body.driver_id, body.from, body.to);
   }
 
   @Patch(':id')

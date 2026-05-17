@@ -194,10 +194,15 @@ export default function ScheduleScreen() {
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      {/* Incident FAB */}
-      <TouchableOpacity style={s.incidentBar} onPress={() => router.push('/(app)/incident')}>
-        <Text style={s.incidentBarText}>⚠  SIGNALER UN INCIDENT</Text>
-      </TouchableOpacity>
+      {/* Bottom actions */}
+      <View style={{ flexDirection: 'row' }}>
+        <TouchableOpacity style={[s.incidentBar, { flex: 1, backgroundColor: '#2a2a2a' }]} onPress={() => router.push('/(app)/mileage')}>
+          <Text style={s.incidentBarText}>📏  KM</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.incidentBar, { flex: 3 }]} onPress={() => router.push('/(app)/incident')}>
+          <Text style={s.incidentBarText}>⚠  SIGNALER UN INCIDENT</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

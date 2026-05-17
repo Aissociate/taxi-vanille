@@ -286,13 +286,18 @@ export default function InvoicesPage() {
 // ─── Generate modal ───────────────────────────────────────────────────────────
 
 function GenerateModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const today = new Date().toISOString().split('T')[0];
+  const [mode, setMode]   = useState<'month' | 'period'>('month');
   const [month, setMonth] = useState(currentMonth());
+  const [from,  setFrom]  = useState(today);
+  const [to,    setTo]    = useState(today);
   const [loading, setLoading] = useState(false);
 
   const generate = async () => {
     setLoading(true);
     try {
-      const res = await api.post('/invoices/generate', { month });
+      const body = mode === 'month' ? { month } : { from, to };
+      const res = await api.post('/invoices/generate', body);
       const { generated, skipped } = res.data;
       toast.success(`${generated} fiche(s) générée(s)${skipped ? ` · ${skipped} déjà existante(s)` : ''}`);
       onDone();
@@ -300,30 +305,57 @@ function GenerateModal({ onClose, onDone }: { onClose: () => void; onDone: () =>
     finally { setLoading(false); }
   };
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', border: '1.5px solid var(--stroke3)',
+    borderRadius: 8, fontSize: 14, fontFamily: 'var(--font-mono)', boxSizing: 'border-box',
+  };
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1, padding: '8px 0', textAlign: 'center', cursor: 'pointer', fontFamily: 'var(--font-mono)',
+    fontSize: 11, fontWeight: active ? 800 : 400,
+    color: active ? 'var(--brand)' : 'var(--stroke2)', letterSpacing: '.08em', textTransform: 'uppercase',
+    background: 'none', border: 'none', borderBottom: `2px solid ${active ? 'var(--brand)' : 'transparent'}`,
+  });
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-      <div style={{ background: '#fff', borderRadius: 14, padding: 28, width: 380, boxShadow: '0 8px 32px rgba(0,0,0,.18)' }}>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--stroke2)', marginBottom: 8 }}>Générer les fiches</div>
-        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--stroke)', marginBottom: 18 }}>Rétrocessions du mois</div>
+      <div style={{ background: '#fff', borderRadius: 14, padding: 28, width: 420, boxShadow: '0 8px 32px rgba(0,0,0,.18)' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--stroke2)', marginBottom: 4 }}>Générer les fiches</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--stroke)', marginBottom: 18 }}>Rétrocessions · nouvelle fiche</div>
 
-        <div style={{ marginBottom: 18 }}>
-          <label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--stroke2)', textTransform: 'uppercase', letterSpacing: '.1em', display: 'block', marginBottom: 6 }}>Mois</label>
-          <input
-            type="month"
-            value={month}
-            onChange={e => setMonth(e.target.value)}
-            style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--stroke3)', borderRadius: 8, fontSize: 14, fontFamily: 'var(--font-mono)', boxSizing: 'border-box' }}
-          />
+        {/* Mode toggle */}
+        <div style={{ display: 'flex', borderBottom: '1.5px solid var(--stroke3)', marginBottom: 18 }}>
+          <button style={tabStyle(mode === 'month')}  onClick={() => setMode('month')}>Mois complet</button>
+          <button style={tabStyle(mode === 'period')} onClick={() => setMode('period')}>Période libre</button>
         </div>
 
-        <div style={{ fontSize: 12, color: 'var(--stroke2)', marginBottom: 20, lineHeight: 1.6 }}>
-          Une fiche brouillon sera créée pour chaque chauffeur actif ayant des trajets sur la période. Les fiches déjà existantes pour ce mois seront ignorées.
+        {mode === 'month' ? (
+          <div style={{ marginBottom: 18 }}>
+            <label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--stroke2)', textTransform: 'uppercase', letterSpacing: '.1em', display: 'block', marginBottom: 6 }}>Mois</label>
+            <input type="month" value={month} onChange={e => setMonth(e.target.value)} style={inputStyle} />
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+            <div>
+              <label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--stroke2)', textTransform: 'uppercase', letterSpacing: '.1em', display: 'block', marginBottom: 6 }}>Du</label>
+              <input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--stroke2)', textTransform: 'uppercase', letterSpacing: '.1em', display: 'block', marginBottom: 6 }}>Au</label>
+              <input type="date" value={to} min={from} max={today} onChange={e => setTo(e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ fontSize: 12, color: 'var(--stroke2)', marginBottom: 20, lineHeight: 1.6, background: 'var(--paper)', borderRadius: 6, padding: '10px 12px' }}>
+          {mode === 'month'
+            ? 'Une fiche brouillon sera créée pour chaque chauffeur actif ayant des trajets sur le mois. Les fiches déjà existantes seront ignorées.'
+            : 'Utile pour tester ou facturer une période atypique (dimanche isolé, jour férié…). Le numéro de fiche inclura les dates de début et fin.'}
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
           <Btn sm style={{ flex: 1 }} onClick={onClose}>Annuler</Btn>
           <Btn sm accent style={{ flex: 2 }} onClick={generate} disabled={loading}>
-            {loading ? 'Génération…' : `Générer · ${monthLabel(month)}`}
+            {loading ? 'Génération…' : mode === 'month' ? `Générer · ${monthLabel(month)}` : `Générer · ${from} → ${to}`}
           </Btn>
         </div>
       </div>
