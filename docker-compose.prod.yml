@@ -1,8 +1,8 @@
 # docker-compose.prod.yml — Surcharges pour déploiement VPS
-# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
 # Ce fichier ferme les ports directs (postgres, redis, backend)
-# et ne laisse que nginx exposé sur le port 80 (+ 443 si TLS configuré).
+# et ne laisse que nginx exposé sur les ports 80 et 443.
 
 services:
   postgres:
@@ -25,8 +25,9 @@ services:
     ports: []
     environment:
       NODE_ENV: production
-      # En prod, ALLOWED_ORIGINS doit pointer vers le domaine public
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
+      # En prod, ALLOWED_ORIGINS doit pointer vers le domaine public.
+      # Mettre les variantes http ET https tant que la migration TLS n'est pas terminée.
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://app.taxivanille.yt,http://app.taxivanille.yt}
     deploy:
       resources:
         limits:
@@ -49,19 +50,32 @@ services:
   nginx:
     ports:
       - "80:80"
-      # Décommenter pour HTTPS (avec Certbot)
-      # - "443:443"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      # Décommenter pour TLS avec Let's Encrypt
-      # - certbot_www:/var/www/certbot:ro
-      # - certbot_certs:/etc/letsencrypt:ro
+      # Certbot webroot + certificats (créés au premier `certbot certonly`)
+      - certbot_www:/var/www/certbot:ro
+      - certbot_certs:/etc/letsencrypt:ro
     deploy:
       resources:
         limits:
           memory: 64m
 
-# Décommenter pour TLS
-# volumes:
-#   certbot_www:
-#   certbot_certs:
+  # ── Certbot (Let's Encrypt) ─────────────────────────────────────────────────
+  # Service one-shot pour émettre / renouveler les certificats.
+  # Lancer manuellement :
+  #   docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm certbot certonly \
+  #     --webroot -w /var/www/certbot -d app.taxivanille.yt \
+  #     --email admin@taxivanille.yt --agree-tos --no-eff-email
+  certbot:
+    image: certbot/certbot:latest
+    profiles: ["tls"]
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+    entrypoint: /bin/sh -c
+    command: ["trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"]
+
+volumes:
+  certbot_www:
+  certbot_certs:

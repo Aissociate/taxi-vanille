@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module';
+import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
 import { DriversModule } from './drivers/drivers.module';
 import { TripsModule } from './trips/trips.module';
@@ -18,6 +19,7 @@ import { SettingsModule } from './settings/settings.module';
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     DatabaseModule,
+    CommonModule,
     AuthModule,
     DriversModule,
     TripsModule,

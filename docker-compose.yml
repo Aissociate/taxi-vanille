@@ -58,14 +58,15 @@ services:
     # Internal only — exposed via nginx on port 80
     expose:
       - "3001"
-    # Keep direct access for dev/debugging — remove in prod
+    # Dev-only direct access. In prod, docker-compose.prod.yml clears this with `ports: []`.
     ports:
-      - "${BACKEND_PORT:-3001}:3001"
+      - "127.0.0.1:${BACKEND_PORT:-3001}:3001"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/v1/auth/health 2>/dev/null || exit 0"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/v1/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
 
   web:
     build:
