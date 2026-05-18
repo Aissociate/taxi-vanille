@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { logout, decodeToken, AuthUser } from '@/lib/auth';
-import { useDemoMode } from '@/lib/demo';
 import Cookies from 'js-cookie';
 
 const NAV = [
@@ -23,7 +22,6 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const { demo, toggle } = useDemoMode();
 
   useEffect(() => {
     const token = Cookies.get('access_token');
@@ -120,43 +118,6 @@ export function Sidebar() {
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--danger, #ef4444)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--red-50, #fef2f2)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-3)'; (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
         >⏻</button>
-      </div>
-
-      {/* Demo / Réel toggle */}
-      <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)' }}>
-        <button
-          onClick={toggle}
-          title={demo ? 'Passer en mode réel (données DB)' : 'Passer en mode démo (données fictives)'}
-          style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-            padding: '7px 10px', borderRadius: 7, cursor: 'pointer',
-            border: `1.5px solid ${demo ? 'rgba(245,158,11,.4)' : 'rgba(34,197,94,.4)'}`,
-            background: demo ? 'rgba(245,158,11,.08)' : 'rgba(34,197,94,.08)',
-            transition: 'all .2s',
-          }}>
-          {/* Pastille animée */}
-          <span style={{
-            width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-            background: demo ? '#f59e0b' : '#22c55e',
-            boxShadow: demo ? '0 0 0 3px rgba(245,158,11,.2)' : '0 0 0 3px rgba(34,197,94,.2)',
-          }}/>
-          <span style={{ flex: 1, textAlign: 'left' }}>
-            <span style={{
-              display: 'block', fontFamily: 'var(--font-mono)', fontSize: 8.5,
-              letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700,
-              color: demo ? '#92400e' : '#166534',
-            }}>
-              {demo ? 'Mode démo' : 'Mode réel'}
-            </span>
-            <span style={{ display: 'block', fontSize: 10, color: 'var(--text-3)', marginTop: 1 }}>
-              {demo ? 'Données fictives' : 'Connecté à la DB'}
-            </span>
-          </span>
-          <span style={{
-            fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700,
-            color: demo ? '#92400e' : '#166534',
-          }}>{demo ? '→ RÉEL' : '→ DÉMO'}</span>
-        </button>
       </div>
 
       {/* App chauffeur */}

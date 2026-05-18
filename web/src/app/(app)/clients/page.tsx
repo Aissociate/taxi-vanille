@@ -2,7 +2,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
-import { useDemoMode } from '@/lib/demo';
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES
@@ -99,101 +98,9 @@ function apiToDirStats(raw: Record<string,unknown>, fb: ClientDef): Pick<ClientD
   };
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   DEMO DATA — CADEMA Ligne 4 (Mars 2026)
-═══════════════════════════════════════════════════════════════ */
-const L4: DailyRow[] = [
-  { date:'2026-03-01', jour:'Dim', usagers:112,  usagers_matin:68,  usagers_am:44,  taux:28, taux_matin:34,  taux_am:22, incidents:0, retards:0, unplanned:0 },
-  { date:'2026-03-02', jour:'Lun', usagers:534,  usagers_matin:298, usagers_am:236, taux:82, taux_matin:92,  taux_am:72, incidents:0, retards:2, unplanned:1 },
-  { date:'2026-03-03', jour:'Mar', usagers:521,  usagers_matin:290, usagers_am:231, taux:80, taux_matin:90,  taux_am:71, incidents:1, retards:1, unplanned:0 },
-  { date:'2026-03-04', jour:'Mer', usagers:548,  usagers_matin:308, usagers_am:240, taux:84, taux_matin:95,  taux_am:74, incidents:0, retards:0, unplanned:1 },
-  { date:'2026-03-05', jour:'Jeu', usagers:562,  usagers_matin:315, usagers_am:247, taux:86, taux_matin:97,  taux_am:76, incidents:0, retards:1, unplanned:0 },
-  { date:'2026-03-06', jour:'Ven', usagers:578,  usagers_matin:322, usagers_am:256, taux:89, taux_matin:99,  taux_am:79, incidents:0, retards:3, unplanned:2 },
-  { date:'2026-03-07', jour:'Sam', usagers:284,  usagers_matin:168, usagers_am:116, taux:56, taux_matin:66,  taux_am:46, incidents:0, retards:0, unplanned:1 },
-  { date:'2026-03-08', jour:'Dim', usagers:98,   usagers_matin:58,  usagers_am:40,  taux:24, taux_matin:29,  taux_am:20, incidents:0, retards:0, unplanned:0 },
-  { date:'2026-03-09', jour:'Lun', usagers:541,  usagers_matin:302, usagers_am:239, taux:83, taux_matin:93,  taux_am:73, incidents:0, retards:1, unplanned:0 },
-  { date:'2026-03-10', jour:'Mar', usagers:556,  usagers_matin:311, usagers_am:245, taux:85, taux_matin:96,  taux_am:75, incidents:0, retards:2, unplanned:1 },
-  { date:'2026-03-11', jour:'Mer', usagers:544,  usagers_matin:304, usagers_am:240, taux:84, taux_matin:94,  taux_am:74, incidents:1, retards:0, unplanned:0 },
-  { date:'2026-03-12', jour:'Jeu', usagers:568,  usagers_matin:318, usagers_am:250, taux:87, taux_matin:98,  taux_am:77, incidents:0, retards:1, unplanned:1 },
-  { date:'2026-03-13', jour:'Ven', usagers:571,  usagers_matin:319, usagers_am:252, taux:88, taux_matin:98,  taux_am:77, incidents:0, retards:2, unplanned:0 },
-  { date:'2026-03-14', jour:'Sam', usagers:271,  usagers_matin:159, usagers_am:112, taux:54, taux_matin:63,  taux_am:44, incidents:0, retards:1, unplanned:2 },
-  { date:'2026-03-15', jour:'Dim', usagers:104,  usagers_matin:62,  usagers_am:42,  taux:26, taux_matin:31,  taux_am:21, incidents:0, retards:0, unplanned:0 },
-  { date:'2026-03-16', jour:'Lun', usagers:537,  usagers_matin:300, usagers_am:237, taux:82, taux_matin:92,  taux_am:73, incidents:0, retards:0, unplanned:1 },
-  { date:'2026-03-17', jour:'Mar', usagers:549,  usagers_matin:307, usagers_am:242, taux:84, taux_matin:94,  taux_am:74, incidents:0, retards:1, unplanned:0 },
-  { date:'2026-03-18', jour:'Mer', usagers:561,  usagers_matin:314, usagers_am:247, taux:86, taux_matin:97,  taux_am:76, incidents:0, retards:2, unplanned:0 },
-  { date:'2026-03-19', jour:'Jeu', usagers:555,  usagers_matin:310, usagers_am:245, taux:85, taux_matin:95,  taux_am:75, incidents:1, retards:1, unplanned:1 },
-  { date:'2026-03-20', jour:'Ven', usagers:574,  usagers_matin:321, usagers_am:253, taux:88, taux_matin:99,  taux_am:78, incidents:0, retards:3, unplanned:1 },
-  { date:'2026-03-21', jour:'Sam', usagers:268,  usagers_matin:156, usagers_am:112, taux:53, taux_matin:62,  taux_am:44, incidents:0, retards:0, unplanned:2 },
-  { date:'2026-03-22', jour:'Dim', usagers:91,   usagers_matin:54,  usagers_am:37,  taux:22, taux_matin:27,  taux_am:18, incidents:0, retards:0, unplanned:0 },
-  { date:'2026-03-23', jour:'Lun', usagers:543,  usagers_matin:304, usagers_am:239, taux:83, taux_matin:94,  taux_am:73, incidents:0, retards:1, unplanned:0 },
-  { date:'2026-03-24', jour:'Mar', usagers:558,  usagers_matin:312, usagers_am:246, taux:86, taux_matin:96,  taux_am:76, incidents:0, retards:0, unplanned:1 },
-  { date:'2026-03-25', jour:'Mer', usagers:565,  usagers_matin:316, usagers_am:249, taux:87, taux_matin:97,  taux_am:77, incidents:0, retards:2, unplanned:0 },
-  { date:'2026-03-26', jour:'Jeu', usagers:572,  usagers_matin:320, usagers_am:252, taux:88, taux_matin:98,  taux_am:77, incidents:0, retards:1, unplanned:0 },
-  { date:'2026-03-27', jour:'Ven', usagers:581,  usagers_matin:325, usagers_am:256, taux:89, taux_matin:100, taux_am:79, incidents:0, retards:4, unplanned:2 },
-  { date:'2026-03-28', jour:'Sam', usagers:276,  usagers_matin:162, usagers_am:114, taux:55, taux_matin:64,  taux_am:45, incidents:1, retards:1, unplanned:1 },
-  { date:'2026-03-29', jour:'Dim', usagers:108,  usagers_matin:64,  usagers_am:44,  taux:27, taux_matin:32,  taux_am:22, incidents:0, retards:0, unplanned:0 },
-  { date:'2026-03-30', jour:'Lun', usagers:548,  usagers_matin:307, usagers_am:241, taux:84, taux_matin:95,  taux_am:74, incidents:0, retards:2, unplanned:1 },
-  { date:'2026-03-31', jour:'Mar', usagers:562,  usagers_matin:314, usagers_am:248, taux:86, taux_matin:97,  taux_am:76, incidents:0, retards:1, unplanned:0 },
-];
-
-const L3: DailyRow[] = L4.map(r => ({
-  ...r,
-  usagers:        Math.round(r.usagers        * 1.28),
-  usagers_matin:  Math.round(r.usagers_matin  * 1.30),
-  usagers_am:     Math.round(r.usagers_am     * 1.25),
-  taux:           Math.min(99, Math.round(r.taux       * 1.08)),
-  taux_matin:     Math.min(100,Math.round(r.taux_matin * 1.06)),
-  taux_am:        Math.min(99, Math.round(r.taux_am    * 1.10)),
-}));
-
-const CHM: DailyRow[] = L4.map(r => ({
-  ...r,
-  usagers:        Math.round(r.usagers        * 0.54),
-  usagers_matin:  Math.round(r.usagers_matin  * 0.55),
-  usagers_am:     Math.round(r.usagers_am     * 0.53),
-  taux:           Math.max(20, Math.round(r.taux       * 0.78)),
-  taux_matin:     Math.max(20, Math.round(r.taux_matin * 0.76)),
-  taux_am:        Math.max(15, Math.round(r.taux_am    * 0.80)),
-}));
-
-const CLIENTS: ClientDef[] = [
-  {
-    id: 'l3', nom: 'CADEMA', ligne: 'Ligne 3', color: '#2563eb',
-    sub: 'Doujani ↔ Passot Barge · 14 chauffeurs', badge: 'AO',
-    data: L3,
-    dir_matin_a: 'Doujani → Barge', dir_matin_r: 'Barge → Doujani',
-    dir_am_a:   'Barge → Doujani',  dir_am_r:   'Doujani → Barge',
-    taux_matin_a: 97, taux_matin_r: 51, taux_am_a: 86, taux_am_r: 58,
-    stats_matin_a: { duration_min: 48, avg_pax: 51, nb_vehicles: 7, vehicle_seats: 55, nb_trips_day: 1 },
-    stats_matin_r: { duration_min: 44, avg_pax: 49, nb_vehicles: 7, vehicle_seats: 55, nb_trips_day: 1 },
-    stats_am_a:    { duration_min: 47, avg_pax: 41, nb_vehicles: 7, vehicle_seats: 55, nb_trips_day: 1 },
-    stats_am_r:    { duration_min: 51, avg_pax: 39, nb_vehicles: 7, vehicle_seats: 55, nb_trips_day: 1 },
-  },
-  {
-    id: 'l4', nom: 'CADEMA', ligne: 'Ligne 4', color: '#7c3aed',
-    sub: 'Vahibe ↔ Passamainty (PEM) · 14 chauffeurs', badge: 'AO',
-    data: L4,
-    dir_matin_a: 'Vahibe → PEM', dir_matin_r: 'PEM → Vahibe',
-    dir_am_a:   'PEM → Vahibe', dir_am_r:   'Vahibe → PEM',
-    taux_matin_a: 97, taux_matin_r: 43, taux_am_a: 79, taux_am_r: 45,
-    stats_matin_a: { duration_min: 42, avg_pax: 49, nb_vehicles: 6, vehicle_seats: 55, nb_trips_day: 1 },
-    stats_matin_r: { duration_min: 38, avg_pax: 47, nb_vehicles: 6, vehicle_seats: 55, nb_trips_day: 1 },
-    stats_am_a:    { duration_min: 41, avg_pax: 39, nb_vehicles: 6, vehicle_seats: 55, nb_trips_day: 1 },
-    stats_am_r:    { duration_min: 45, avg_pax: 37, nb_vehicles: 6, vehicle_seats: 55, nb_trips_day: 1 },
-  },
-  {
-    id: 'chm', nom: 'CHM', ligne: 'Petite-Terre', color: '#059669',
-    sub: 'CHM ↔ La Barge · 13 arrêts · 8 chauffeurs', badge: 'MARCHÉ',
-    data: CHM,
-    dir_matin_a: 'CHM → La Barge', dir_matin_r: 'La Barge → CHM',
-    dir_am_a:   'La Barge → CHM', dir_am_r:   'CHM → La Barge',
-    taux_matin_a: 72, taux_matin_r: 38, taux_am_a: 61, taux_am_r: 41,
-    stats_matin_a: { duration_min: 22, avg_pax: 38, nb_vehicles: 4, vehicle_seats: 45, nb_trips_day: 1 },
-    stats_matin_r: { duration_min: 20, avg_pax: 36, nb_vehicles: 4, vehicle_seats: 45, nb_trips_day: 1 },
-    stats_am_a:    { duration_min: 21, avg_pax: 29, nb_vehicles: 4, vehicle_seats: 45, nb_trips_day: 1 },
-    stats_am_r:    { duration_min: 23, avg_pax: 27, nb_vehicles: 4, vehicle_seats: 45, nb_trips_day: 1 },
-  },
-];
+const EMPTY_DIR_STATS: DirStats = {
+  duration_min: 0, avg_pax: 0, nb_vehicles: 0, vehicle_seats: 0, nb_trips_day: 0,
+};
 
 /* ═══════════════════════════════════════════════════════════════
    HELPERS
@@ -557,9 +464,9 @@ function ClientReport({ client, range, onBack }: {
     api.get(`/clients/${client.id}/daily-stats`, { params: { from: range.from, to: range.to } })
       .then(res => {
         const rows: DailyRow[] = (res.data as Record<string,unknown>[]).map(apiToDailyRow);
-        setLiveRows(rows.length ? rows : null);
+        setLiveRows(rows);
       })
-      .catch(() => { /* garde client.data statique */ })
+      .catch(() => setLiveRows([]))
       .finally(() => setStatsLoading(false));
   }, [client.id, range.from, range.to]);
 
@@ -567,10 +474,10 @@ function ClientReport({ client, range, onBack }: {
   useEffect(() => {
     api.get(`/clients/${client.id}/direction-stats`, { params: { from: range.from, to: range.to } })
       .then(res => setLiveStats(apiToDirStats(res.data as Record<string,unknown>, client)))
-      .catch(() => { /* garde client.stats_* statiques */ });
+      .catch(() => setLiveStats(null));
   }, [client.id, range.from, range.to]);
 
-  /* Données effectives : live si disponible, sinon demo */
+  /* Données effectives : live si disponible, sinon vide (mode réel) */
   const allRows = liveRows ?? client.data;
   const effStats = liveStats ?? {
     stats_matin_a: client.stats_matin_a,
@@ -1406,53 +1313,43 @@ function PeriodSelector({ period, onPeriod, cf, ct, onCf, onCt }: {
    PAGE
 ═══════════════════════════════════════════════════════════════ */
 export default function ClientsPage() {
-  const { demo } = useDemoMode();
   const [period,       setPeriod]       = useState<Period>('mois');
   const [customFrom,   setCustomFrom]   = useState('2026-03-01');
   const [customTo,     setCustomTo]     = useState('2026-03-31');
   const [activeReport, setActiveReport] = useState<string | null>(null);
-  const [clients,      setClients]      = useState<ClientDef[]>(CLIENTS);
+  const [clients,      setClients]      = useState<ClientDef[]>([]);
 
   /* ── Fetch liste des lignes depuis l'API ── */
   useEffect(() => {
-    if (demo) { setClients(CLIENTS); return; }
     api.get('/clients/lines')
       .then(res => {
         const lines: Record<string,unknown>[] = res.data;
         if (!Array.isArray(lines) || !lines.length) { setClients([]); return; }
-        const mapped: ClientDef[] = lines.map(l => {
-          // Fallback sur les données statiques pour les champs non fournis par l'API
-          const fb = CLIENTS.find(c =>
-            (l.id && c.id === l.id) ||
-            (l.name && c.ligne === l.name) ||
-            (l.code && c.ligne.includes(String(l.code)))
-          ) ?? CLIENTS[0];
-          return {
-            id:           String(l.id ?? fb.id),
-            nom:          String(l.client_name ?? l.nom ?? fb.nom),
-            ligne:        String(l.name ?? fb.ligne),
-            sub:          String(l.sub  ?? fb.sub),
-            badge:        String(l.badge ?? fb.badge),
-            color:        String(l.color ?? fb.color),
-            data:         [],
-            dir_matin_a:  String(l.dir_matin_a ?? fb.dir_matin_a),
-            dir_matin_r:  String(l.dir_matin_r ?? fb.dir_matin_r),
-            dir_am_a:     String(l.dir_am_a    ?? fb.dir_am_a),
-            dir_am_r:     String(l.dir_am_r    ?? fb.dir_am_r),
-            taux_matin_a: Number(l.taux_matin_a ?? fb.taux_matin_a),
-            taux_matin_r: Number(l.taux_matin_r ?? fb.taux_matin_r),
-            taux_am_a:    Number(l.taux_am_a    ?? fb.taux_am_a),
-            taux_am_r:    Number(l.taux_am_r    ?? fb.taux_am_r),
-            stats_matin_a: fb.stats_matin_a,
-            stats_matin_r: fb.stats_matin_r,
-            stats_am_a:    fb.stats_am_a,
-            stats_am_r:    fb.stats_am_r,
-          };
-        });
+        const mapped: ClientDef[] = lines.map(l => ({
+          id:           String(l.id ?? ''),
+          nom:          String(l.client_name ?? l.nom ?? ''),
+          ligne:        String(l.name ?? ''),
+          sub:          String(l.sub  ?? ''),
+          badge:        String(l.badge ?? ''),
+          color:        String(l.color ?? '#7c3aed'),
+          data:         [],
+          dir_matin_a:  String(l.dir_matin_a ?? ''),
+          dir_matin_r:  String(l.dir_matin_r ?? ''),
+          dir_am_a:     String(l.dir_am_a    ?? ''),
+          dir_am_r:     String(l.dir_am_r    ?? ''),
+          taux_matin_a: Number(l.taux_matin_a ?? 0),
+          taux_matin_r: Number(l.taux_matin_r ?? 0),
+          taux_am_a:    Number(l.taux_am_a    ?? 0),
+          taux_am_r:    Number(l.taux_am_r    ?? 0),
+          stats_matin_a: EMPTY_DIR_STATS,
+          stats_matin_r: EMPTY_DIR_STATS,
+          stats_am_a:    EMPTY_DIR_STATS,
+          stats_am_r:    EMPTY_DIR_STATS,
+        }));
         setClients(mapped);
       })
       .catch(() => setClients([]));
-  }, [demo]);
+  }, []);
 
   const activeClient = clients.find(c => c.id === activeReport) ?? null;
   const range        = getDateRange(period, customFrom, customTo);
@@ -1496,13 +1393,25 @@ export default function ClientsPage() {
 
           {/* cards */}
           <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
-            {clients.map(c => (
-              <ClientCard
-                key={c.id}
-                client={c}
-                onViewReport={() => setActiveReport(c.id)}
-              />
-            ))}
+            {clients.length === 0 ? (
+              <div style={{ padding: 60, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>📇</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#374151', marginBottom: 6 }}>
+                  Aucun contrat client
+                </div>
+                <div style={{ fontSize: 13 }}>
+                  Créez votre premier contrat pour commencer à suivre les statistiques.
+                </div>
+              </div>
+            ) : (
+              clients.map(c => (
+                <ClientCard
+                  key={c.id}
+                  client={c}
+                  onViewReport={() => setActiveReport(c.id)}
+                />
+              ))
+            )}
             <div style={{ height: 24 }}/>
           </div>
         </>

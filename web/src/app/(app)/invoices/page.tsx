@@ -3,59 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { PageBar, Eyebrow, Btn } from '@/components/ui';
 import { api } from '@/lib/api';
-import { useDemoMode } from '@/lib/demo';
-
-const DEMO_INVOICES: Invoice[] = [
-  {
-    id: 'demo-1', invoice_number: 'RET-2026-05-CH001', month: '2026-05',
-    period_start: '2026-05-01', period_end: '2026-05-31', status: 'draft',
-    driver_name: 'Soibati Abdallah', driver_number: 'CH001',
-    amount_ht: 3142.50, amount_ttc: 3142.50, net_amount: 3042.50,
-    km_total: 3820, on_call_hours: 14, vehicle_rental: true, advance_repayment: 100, notes: '',
-    pricing_config_id: '',
-    line_items: [
-      { key:'astreinte_hours',  label:"Heures d'astreinte",         qty:14,  unit_price:12.50, total:175.00, unit:'h', editable:true },
-      { key:'fullhour_weekday', label:'Trajets HP semaine (6h–19h)', qty:87,  unit_price:8.00,  total:696.00 },
-      { key:'after19h_weekday', label:'Trajets après 19h semaine',  qty:22,  unit_price:10.00, total:220.00 },
-      { key:'astreinte_trip',   label:'Trajets en astreinte',       qty:31,  unit_price:11.50, total:356.50 },
-      { key:'saturday',         label:'Trajets samedi',             qty:18,  unit_price:9.00,  total:162.00 },
-      { key:'sunday',           label:'Trajets dimanche',           qty:9,   unit_price:11.00, total:99.00  },
-      { key:'public_holiday',   label:'Trajets jours fériés',      qty:4,   unit_price:13.00, total:52.00  },
-      { key:'unplanned_trip',   label:'Trajets non prévus',        qty:5,   unit_price:9.50,  total:47.50  },
-      { key:'km_total',         label:'Kilométrage mensuel',        qty:3820, unit_price:0,    total:0, unit:'km', info:true },
-      { key:'km_surcharge',     label:'Surcharge km (>3 500 km)',   qty:320, unit_price:0.50,  total:160.00, unit:'km' },
-      { key:'management_fee',   label:'Frais de gestion',           qty:1,   unit_price:74.00, total:74.00, unit:'forfait' },
-    ],
-  },
-  {
-    id: 'demo-2', invoice_number: 'RET-2026-05-CH002', month: '2026-05',
-    period_start: '2026-05-01', period_end: '2026-05-31', status: 'validated',
-    driver_name: 'Mouhoudhoire Ali', driver_number: 'CH002',
-    amount_ht: 2587.00, amount_ttc: 2587.00, net_amount: 2587.00,
-    km_total: 3210, on_call_hours: 8, vehicle_rental: false, advance_repayment: 0, notes: 'Véhicule personnel. RAS.',
-    pricing_config_id: '',
-    line_items: [
-      { key:'astreinte_hours',  label:"Heures d'astreinte",         qty:8,   unit_price:12.50, total:100.00, unit:'h', editable:true },
-      { key:'fullhour_weekday', label:'Trajets HP semaine (6h–19h)', qty:102, unit_price:8.00,  total:816.00 },
-      { key:'after19h_weekday', label:'Trajets après 19h semaine',  qty:18,  unit_price:10.00, total:180.00 },
-      { key:'astreinte_trip',   label:'Trajets en astreinte',       qty:24,  unit_price:11.50, total:276.00 },
-      { key:'saturday',         label:'Trajets samedi',             qty:22,  unit_price:9.00,  total:198.00 },
-      { key:'sunday',           label:'Trajets dimanche',           qty:13,  unit_price:11.00, total:143.00 },
-      { key:'public_holiday',   label:'Trajets jours fériés',      qty:2,   unit_price:13.00, total:26.00  },
-      { key:'unplanned_trip',   label:'Trajets non prévus',        qty:2,   unit_price:9.50,  total:19.00  },
-      { key:'km_total',         label:'Kilométrage mensuel',        qty:3210, unit_price:0,    total:0, unit:'km', info:true },
-      { key:'km_surcharge',     label:'Surcharge km (>3 500 km)',   qty:0,   unit_price:0.50,  total:0.00, unit:'km' },
-      { key:'management_fee',   label:'Frais de gestion',           qty:1,   unit_price:74.00, total:74.00, unit:'forfait' },
-    ],
-  },
-];
-
-const DEMO_PRICING = {
-  id:'', name:'Tarifs standard', astreinte_hourly_rate:12.50, fullhour_weekday_rate:8.00,
-  after19h_weekday_rate:10.00, astreinte_trip_rate:11.50, saturday_rate:9.00, sunday_rate:11.00,
-  public_holiday_rate:13.00, unplanned_trip_rate:9.50,
-  km_threshold:3500, km_surcharge_per_km:0.50, vehicle_rental_forfait:200.00, management_fee:74.00,
-};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -157,7 +104,6 @@ function StatusPill({ s }: { s: Status }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function InvoicesPage() {
-  const { demo } = useDemoMode();
   const [view, setView] = useState<'kanban' | 'detail' | 'pricing'>('kanban');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,20 +112,18 @@ export default function InvoicesPage() {
   const [showGenerate, setShowGenerate] = useState(false);
 
   const fetchInvoices = useCallback(() => {
-    if (demo) { setInvoices(DEMO_INVOICES); setLoading(false); return; }
     setLoading(true);
     api.get('/invoices')
       .then(res => setInvoices(res.data))
       .catch(() => setInvoices([]))
       .finally(() => setLoading(false));
-  }, [demo]);
+  }, []);
 
   const fetchPricing = useCallback(() => {
-    if (demo) { setPricing(DEMO_PRICING); return; }
     api.get('/invoices/pricing-config')
       .then(res => setPricing(res.data))
-      .catch(() => setPricing(DEMO_PRICING));
-  }, [demo]);
+      .catch(() => setPricing(null));
+  }, []);
 
   useEffect(() => { fetchInvoices(); fetchPricing(); }, [fetchInvoices, fetchPricing]);
 
@@ -829,9 +773,7 @@ function PricingConfigView({
       toast.success('Tarifs mis à jour');
       onSaved(res.data);
     } catch {
-      // backend absent — on applique localement
-      onSaved({ ...config, ...body } as PricingConfig);
-      toast.success('Tarifs mis à jour');
+      toast.error('Erreur lors de la sauvegarde des tarifs');
     } finally { setSaving(false); }
   };
 

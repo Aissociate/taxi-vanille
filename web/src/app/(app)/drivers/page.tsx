@@ -2,8 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { L3, L4, CHM, DOCS, RIBS, TODAY_DOC, DAYS, LINE_DIR } from '@/lib/data';
-import { useDemoMode } from '@/lib/demo';
+import { TODAY_DOC, LINE_DIR } from '@/lib/data';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,14 +20,16 @@ interface ApiDriver {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const LOCAL_ALL = [
-  ...L3.map(d => ({ ...d, _l: 'L3', _color: 'var(--brand)' })),
-  ...L4.map(d => ({ ...d, _l: 'L4', _color: 'var(--info)' })),
-  ...CHM.map(d => ({ ...d, _l: 'CHM', _color: 'var(--success)' })),
-];
+/** Détermine la ligne d'affectation d'un chauffeur à partir du préfixe de son numéro. */
+function lineFromCode(driverNumber: string): { _l: string; _color: string } | null {
+  if (driverNumber.startsWith('D')) return { _l: 'L3',  _color: 'var(--brand)'   };
+  if (driverNumber.startsWith('C')) return { _l: 'L4',  _color: 'var(--info)'    };
+  if (driverNumber.startsWith('H')) return { _l: 'CHM', _color: 'var(--success)' };
+  return null;
+}
 
 function localMatch(driverNumber: string) {
-  return LOCAL_ALL.find(d => d.code === driverNumber);
+  return lineFromCode(driverNumber);
 }
 
 // ── Types Documents ───────────────────────────────────────────────────────────
@@ -67,16 +68,7 @@ function initDocs(driverNumber: string): DocEntry[] {
     const saved = localStorage.getItem(key);
     if (saved) return JSON.parse(saved);
   } catch {}
-  // Bootstrap depuis données statiques
-  const d = DOCS[driverNumber] || {};
-  const rib = RIBS[driverNumber];
-  const entries: DocEntry[] = [];
-  if (d.p) entries.push({ id: 'p', icon: '🪪', label: 'Permis B',           expiry: d.p.e });
-  if (d.c) entries.push({ id: 'c', icon: '📋', label: 'Carte professionnelle', expiry: d.c.e });
-  if (d.m) entries.push({ id: 'm', icon: '🏥', label: 'Visite médicale',     expiry: d.m.e });
-  if (d.a) entries.push({ id: 'a', icon: '🛡', label: 'Assurance véhicule',  expiry: d.a.e });
-  if (rib)  entries.push({ id: 'rib', icon: '🏦', label: 'RIB', banque: rib.banque });
-  return entries;
+  return [];
 }
 
 // ── Composant Documents & RIB ─────────────────────────────────────────────────
@@ -1091,7 +1083,6 @@ function AddDriverModal({ onClose, onCreated }: { onClose: () => void; onCreated
 function EditDriverModal({ driver, onClose, onSaved }: {
   driver: ApiDriver; onClose: () => void; onSaved: (d: ApiDriver) => void;
 }) {
-  const local = localMatch(driver.driver_number);
   const [form, setForm] = useState({
     full_name:      driver.full_name,
     phone:          driver.phone ?? '',
@@ -1210,7 +1201,7 @@ function EditDriverModal({ driver, onClose, onSaved }: {
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, padding: '7px 10px',
                   border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-3)',
                   background: 'var(--surface-2)' }}>
-                  {(local?.vehicule) ?? '—'}
+                  —
                 </div>
               </div>
               <div>
@@ -1282,15 +1273,9 @@ function ConfirmDeactivateModal({ driver, onClose, onConfirm }: {
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function DriversPage() {
-  const FALLBACK: ApiDriver[] = LOCAL_ALL.map((d, i) => ({
-    id: String(i), driver_number: d.code, full_name: d.nom,
-    phone: (d as any).tel, active: true, invoice_period: 'weekly' as const,
-  }));
-
-  const { demo } = useDemoMode();
-  const [drivers, setDrivers] = useState<ApiDriver[]>(FALLBACK);
+  const [drivers, setDrivers] = useState<ApiDriver[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selId, setSelId] = useState<string | null>(FALLBACK[0]?.id ?? null);
+  const [selId, setSelId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<ApiDriver | null>(null);
@@ -1302,21 +1287,16 @@ export default function DriversPage() {
   const [weekTripsLoading, setWeekTripsLoading] = useState(false);
 
   useEffect(() => {
-    if (demo) {
-      setDrivers(FALLBACK);
-      setSelId(FALLBACK[0]?.id ?? null);
-      return;
-    }
     setLoading(true);
     api.get('/drivers')
       .then(res => {
-        const list: ApiDriver[] = res.data;
+        const list: ApiDriver[] = res.data ?? [];
         setDrivers(list);
-        if (list.length) setSelId(list[0].id);
+        if (list.length) setSelId(prev => prev ?? list[0].id);
       })
-      .catch(() => { /* garde le fallback initial */ })
+      .catch(() => setDrivers([]))
       .finally(() => setLoading(false));
-  }, [demo]);
+  }, []);
 
   useEffect(() => {
     if (!selId) return;
@@ -1329,7 +1309,7 @@ export default function DriversPage() {
 
   // Fetch trips de la semaine courante pour le programme de ligne dynamique
   useEffect(() => {
-    if (!selId || demo) { setWeekTrips([]); return; }
+    if (!selId) { setWeekTrips([]); return; }
     const now = new Date();
     const day = now.getDay();
     const mon = new Date(now); mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
@@ -1340,7 +1320,7 @@ export default function DriversPage() {
       .then(res => setWeekTrips(res.data ?? []))
       .catch(() => setWeekTrips([]))
       .finally(() => setWeekTripsLoading(false));
-  }, [selId, demo]);
+  }, [selId]);
 
   const filtered = drivers.filter(d =>
     search === '' ||
@@ -1536,11 +1516,6 @@ export default function DriversPage() {
           <div style={{ padding: '8px 24px 0', display: 'flex', alignItems: 'center', gap: 16 }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '.12em',
               textTransform: 'uppercase', color: 'var(--text-3)', fontWeight: 700 }}>Véhicule</span>
-            {local?.vehicule && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700,
-                color: lineColor, padding: '1px 8px', border: `1.5px solid ${lineColor}`,
-                borderRadius: 4 }}>{local.vehicule}</span>
-            )}
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-2)' }}>
               🪑 {dr.vehicle_seats ?? 55} places
             </span>
@@ -1605,49 +1580,7 @@ export default function DriversPage() {
                   </span>
                 )}
               </div>
-              {local ? (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '68px 1fr 1fr 80px', gap: 6,
-                    paddingBottom: 6, borderBottom: '1px solid var(--border)',
-                    fontSize: 9, fontFamily: 'var(--font-mono)', letterSpacing: '.1em',
-                    textTransform: 'uppercase', color: 'var(--text-3)' }}>
-                    <span>Jour</span><span>Matin AM</span><span>Soir PM</span><span style={{ textAlign: 'right' }}>Note</span>
-                  </div>
-                  {DAYS.map((day, i) => {
-                    const isSun = i === 6;
-                    let amVal = local.am || null, pmVal = local.pm || null, note = '';
-                    if (isSun) {
-                      if (!local.dimJF) { amVal = null; pmVal = null; note = 'Repos'; }
-                      else note = `Dim ${local.dimJF}`;
-                    }
-                    if (local.astr && !isSun) note = 'Astr.';
-                    const isRest = !amVal && !pmVal;
-                    const dir = LINE_DIR[local._l];
-                    return (
-                      <div key={day} style={{ display: 'grid', gridTemplateColumns: '68px 1fr 1fr 80px', gap: 6,
-                        padding: '7px 0', borderBottom: '1px dashed var(--border)', alignItems: 'center' }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700,
-                          color: isRest ? 'var(--text-3)' : 'var(--text)' }}>{day}</span>
-                        <span style={{ fontSize: 11 }}>
-                          {amVal
-                            ? <><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{amVal}</span>{' '}
-                              <span style={{ fontSize: 10, color: lineColor }}>{dir?.am}</span></>
-                            : <span style={{ color: 'var(--text-3)', fontStyle: 'italic' }}>Repos</span>}
-                        </span>
-                        <span style={{ fontSize: 11 }}>
-                          {pmVal
-                            ? <><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{pmVal}</span>{' '}
-                              <span style={{ fontSize: 10, color: lineColor }}>{dir?.pm}</span></>
-                            : <span style={{ color: 'var(--text-3)', fontStyle: 'italic' }}>Repos</span>}
-                        </span>
-                        <span style={{ textAlign: 'right', fontSize: 10, fontFamily: 'var(--font-mono)',
-                          color: note === 'Astr.' ? 'var(--warn)' : 'var(--text-3)',
-                          fontWeight: note === 'Astr.' ? 700 : 400 }}>{note}</span>
-                      </div>
-                    );
-                  })}
-                </>
-              ) : weekTripsLoading ? (
+              {weekTripsLoading ? (
                 <div style={{ padding: '16px 0', fontSize: 12, color: 'var(--text-3)', textAlign: 'center' }}>Chargement…</div>
               ) : weekTrips.length === 0 ? (
                 <div style={{ padding: '20px 0', fontSize: 12, color: 'var(--text-3)', textAlign: 'center' }}>

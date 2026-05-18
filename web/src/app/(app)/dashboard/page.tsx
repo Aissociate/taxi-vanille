@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { api } from '@/lib/api';
-import { useDemoMode } from '@/lib/demo';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -183,45 +182,6 @@ function HBar({ value, max, color }: { value: number; max: number; color: string
   );
 }
 
-// ── Données demo (fallback si backend indisponible) ──────────────────────────
-
-const DEMO: KpiData = {
-  period: { from: '', to: '', span_days: 7 },
-  summary: {
-    total_trips: 195, completed_trips: 187, missed_trips: 8, delayed_trips: 18,
-    total_revenue: '12480', avg_revenue_per_trip: '66.74',
-    total_passengers: 2541, avg_passengers_per_trip: '13.6', avg_passengers_per_day: '363',
-    incidents: 1,
-    last_incident: { notes: 'panne moteur', driver_number: 'D7', full_name: 'COMBO Said' },
-    ponctualite: '94.2', taux_frequentation: '56.7', avg_trip_duration_min: 38,
-    prev_revenue: '11774', prev_completed: 175,
-    revenue_delta_pct: '6.0', completed_delta: 12,
-  },
-  sparkline: [
-    { date: 'Lun', trips: 26, revenue: 1680 },
-    { date: 'Mar', trips: 28, revenue: 1820 },
-    { date: 'Mer', trips: 27, revenue: 1750 },
-    { date: 'Jeu', trips: 29, revenue: 1890 },
-    { date: 'Ven', trips: 31, revenue: 2010 },
-    { date: 'Sam', trips: 24, revenue: 1620 },
-    { date: 'Dim', trips: 22, revenue: 1710 },
-  ],
-  missed_by_cause: [
-    { cause: 'Voiture en panne', count: 9 },
-    { cause: 'Absence chauffeur', count: 7 },
-    { cause: 'Météo / route bloquée', count: 5 },
-    { cause: 'Autre', count: 3 },
-  ],
-  by_driver: [
-    { driver_id: '1', driver_number: 'C1',  full_name: 'EL ANZIZE Hamada',      trips_count: 84, revenue: '5600' },
-    { driver_id: '2', driver_number: 'C14', full_name: 'KAMARDINE Mansour',     trips_count: 81, revenue: '5400' },
-    { driver_id: '3', driver_number: 'C8',  full_name: 'HADHURAMI Makinedine',  trips_count: 78, revenue: '5200' },
-    { driver_id: '4', driver_number: 'C5',  full_name: 'AHAMADI Raenmouddine',  trips_count: 72, revenue: '4800' },
-    { driver_id: '5', driver_number: 'C10', full_name: "ISSIHAKA M'Changama",   trips_count: 65, revenue: '4330' },
-    { driver_id: '6', driver_number: 'C6',  full_name: 'OUSSENI Soula',         trips_count: 70, revenue: '4670' },
-  ],
-};
-
 const CAUSE_COLOR: Record<string, string> = {
   'Voiture en panne':    'var(--danger)',
   'Absence chauffeur':   'var(--warn)',
@@ -232,7 +192,6 @@ const CAUSE_COLOR: Record<string, string> = {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { demo } = useDemoMode();
   const [kpi, setKpi] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('semaine');
@@ -242,22 +201,15 @@ export default function DashboardPage() {
   const activeDate = period === 'jour' ? (customDate || todayISO) : '';
 
   useEffect(() => {
-    if (demo) {
-      setKpi(DEMO);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     const { from, to } = getRange(period, activeDate || undefined);
     api.get(`/kpi/dashboard?from=${from}&to=${to}`)
       .then(res => setKpi(res.data))
       .catch(() => setKpi(null))
       .finally(() => setLoading(false));
-  }, [period, activeDate, demo]);
+  }, [period, activeDate]);
 
-  const data = kpi ?? DEMO;
-  const s = data.summary;
-  const noRealData = !demo && !kpi;
+  const noRealData = !kpi;
   const now = new Date();
   const meta = PERIOD_META[period];
 
@@ -271,13 +223,13 @@ export default function DashboardPage() {
           ? `DIRECTION · ${fmtDateFR(activeDate).toUpperCase()}`
           : `DIRECTION · ${DAYS_FR[now.getDay()].toUpperCase()} ${now.getDate()} ${MONTHS_SHORT[now.getMonth()].toUpperCase()}`;
 
-  const maxDriverTrips = Math.max(...data.by_driver.map(d => Number(d.trips_count)), 1);
-  const maxCause = Math.max(...data.missed_by_cause.map(c => c.count), 1);
-  const realisationPct = s.total_trips > 0 ? (s.completed_trips / s.total_trips) * 100 : 0;
+  const maxDriverTrips = kpi ? Math.max(...kpi.by_driver.map(d => Number(d.trips_count)), 1) : 1;
+  const maxCause = kpi ? Math.max(...kpi.missed_by_cause.map(c => c.count), 1) : 1;
+  const realisationPct = kpi && kpi.summary.total_trips > 0 ? (kpi.summary.completed_trips / kpi.summary.total_trips) * 100 : 0;
 
   // Labels axe sparkline
-  const sparkLabels = data.sparkline.length
-    ? data.sparkline.map(p => p.date.length === 10 ? DAYS_FR[new Date(p.date).getDay()] : p.date)
+  const sparkLabels = kpi && kpi.sparkline.length
+    ? kpi.sparkline.map(p => p.date.length === 10 ? DAYS_FR[new Date(p.date).getDay()] : p.date)
     : [];
 
   const PERIODS: { key: Period; label: string }[] = [
@@ -305,17 +257,6 @@ export default function DashboardPage() {
               Tableau de bord KPI
             </div>
           </div>
-          {demo && (
-            <span style={{
-              fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700,
-              letterSpacing: '.10em', textTransform: 'uppercase',
-              padding: '2px 7px', borderRadius: 4,
-              background: 'rgba(245,158,11,.12)', color: 'var(--warn)',
-              border: '1px solid rgba(245,158,11,.3)',
-            }}>
-              DÉMO
-            </span>
-          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           {PERIODS.map(({ key, label }) => (
@@ -361,7 +302,7 @@ export default function DashboardPage() {
         )}
 
         {/* ── KPI complets (masqués si aucune donnée réelle) ── */}
-        {!noRealData && <><div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        {kpi && (() => { const data = kpi; const s = kpi.summary; return <><div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <KpiBlock
             label={`CA · ${meta.label}`}
             value={`${fmtEuro(s.total_revenue)} €`}
@@ -572,7 +513,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        </>}
+        </>; })()}
 
       </div>
     </div>

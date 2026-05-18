@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { io, Socket } from 'socket.io-client';
 import Cookies from 'js-cookie';
-import { L3, L4, CHM } from '@/lib/data';
+import { api } from '@/lib/api';
 import { GpsPing, getPingStatus, STATUS_COLOR } from '@/lib/gpsUtils';
 
 const LeafletMap = dynamic(() => import('@/components/LeafletMap'), {
@@ -18,29 +18,17 @@ const LeafletMap = dynamic(() => import('@/components/LeafletMap'), {
   ),
 });
 
-// ── Positions démo (fallback sans WebSocket) ──────────────────────────────────
+// ── Roster (chargé depuis l'API) ─────────────────────────────────────────────
 
-const now = () => new Date().toISOString();
-const ago = (mn: number) => new Date(Date.now() - mn * 60000).toISOString();
+interface RosterDriver { code: string; nom: string; ligne: string; color: string; }
 
-const DEMO_POSITIONS: GpsPing[] = [
-  { driver_id: 'D1',  driver_number: 'D1',  driver_name: 'MOHAMED Ali',       lat: -12.835, lng: 45.220, recorded_at: ago(1),  ligne: 'L3' },
-  { driver_id: 'D2',  driver_number: 'D2',  driver_name: 'BARAKA Soumaïla',   lat: -12.812, lng: 45.222, recorded_at: ago(2),  ligne: 'L3' },
-  { driver_id: 'D5',  driver_number: 'D5',  driver_name: 'AMINA Selemani',    lat: -12.793, lng: 45.223, recorded_at: ago(3),  ligne: 'L3' },
-  { driver_id: 'D7',  driver_number: 'D7',  driver_name: 'COMBO Said',        lat: -12.803, lng: 45.219, recorded_at: ago(10), ligne: 'L3' },
-  { driver_id: 'D12', driver_number: 'D12', driver_name: 'KAMARDINE Mansour', lat: -12.762, lng: 45.218, recorded_at: ago(28), ligne: 'L3' },
-  { driver_id: 'C5',  driver_number: 'C5',  driver_name: 'ANRABE Hamada',     lat: -12.945, lng: 45.200, recorded_at: ago(4),  ligne: 'CHM' },
-  { driver_id: 'C14', driver_number: 'C14', driver_name: 'VELOU M\'COLO',     lat: -12.963, lng: 45.193, recorded_at: ago(2),  ligne: 'CHM' },
-  { driver_id: 'L4A', driver_number: 'L4A', driver_name: 'MOUDJIB Saïd',      lat: -12.930, lng: 45.208, recorded_at: ago(1),  ligne: 'L4' },
-];
-
-// ── Roster complet (pour le panneau) ─────────────────────────────────────────
-
-const ROSTER = [
-  ...L3.map(d => ({ ...d, ligne: 'L3', color: '#E8601A' })),
-  ...L4.map(d => ({ ...d, ligne: 'L4', color: '#2563eb' })),
-  ...CHM.map(d => ({ ...d, ligne: 'CHM', color: '#16a34a' })),
-];
+/** Détermine la ligne d'affectation d'un chauffeur à partir du préfixe de son numéro. */
+function lineFromCode(driverNumber: string): { ligne: string; color: string } {
+  if (driverNumber.startsWith('D')) return { ligne: 'L3',  color: '#E8601A' };
+  if (driverNumber.startsWith('C')) return { ligne: 'L4',  color: '#2563eb' };
+  if (driverNumber.startsWith('H')) return { ligne: 'CHM', color: '#16a34a' };
+  return { ligne: 'L3', color: '#E8601A' };
+}
 
 const LINE_OPTS = ['Tous', 'L3', 'L4', 'CHM'] as const;
 
@@ -63,12 +51,27 @@ export default function MapPage() {
   const [showRoutes, setShowRoutes] = useState(true);
   const [dark, setDark] = useState(false);
   const [tick, setTick] = useState(0);
+  const [roster, setRoster] = useState<RosterDriver[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
   // Tick toutes les 30s pour rafraîchir les âges
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 30000);
     return () => clearInterval(t);
+  }, []);
+
+  // Charger la liste des chauffeurs depuis l'API
+  useEffect(() => {
+    api.get('/drivers')
+      .then(r => {
+        const list: Array<{ driver_number: string; full_name: string }> = r.data ?? [];
+        setRoster(list.map(d => ({
+          code: d.driver_number,
+          nom:  d.full_name,
+          ...lineFromCode(d.driver_number),
+        })));
+      })
+      .catch(() => setRoster([]));
   }, []);
 
   // WebSocket GPS
@@ -87,7 +90,7 @@ export default function MapPage() {
   }, []);
 
   const livePings = Object.values(positions);
-  const displayPings: GpsPing[] = livePings.length > 0 ? livePings : DEMO_POSITIONS;
+  const displayPings: GpsPing[] = livePings;
 
   const filteredPings = lineFilter === 'Tous'
     ? displayPings
@@ -142,7 +145,7 @@ export default function MapPage() {
             color: wsConnected ? 'var(--success)' : 'var(--text-3)',
             background: wsConnected ? 'var(--success-10)' : 'var(--surface)',
           }}>
-            {wsConnected ? '⬤ Live' : '○ Démo'}
+            {wsConnected ? '⬤ Live' : '○ Hors-ligne'}
           </span>
 
           {/* Contrôles */}
@@ -212,7 +215,7 @@ export default function MapPage() {
               .map(l => {
                 const lColor = l === 'L3' ? '#E8601A' : l === 'L4' ? '#2563eb' : '#16a34a';
                 const lLabel = l === 'L3' ? 'Doujani ↔ La Barge' : l === 'L4' ? 'Vahibe ↔ PEM' : 'CHM ↔ La Barge';
-                const drivers = ROSTER.filter(d => d.ligne === l);
+                const drivers = roster.filter(d => d.ligne === l);
                 return (
                   <div key={l}>
                     {/* Ligne header */}

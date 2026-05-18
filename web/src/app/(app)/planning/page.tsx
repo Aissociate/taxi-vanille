@@ -1,10 +1,9 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { L3, L4, CHM, HOURS, LINE_DIR, GANTT_START, GANTT_SPAN, Driver } from '@/lib/data';
+import { HOURS, LINE_DIR, GANTT_START, GANTT_SPAN, Driver } from '@/lib/data';
 import { PageBar, Eyebrow, Pill, Btn, AlertBanner } from '@/components/ui';
 import { api } from '@/lib/api';
-import { useDemoMode } from '@/lib/demo';
 
 const toPos = (h: number) => ((h - GANTT_START) / GANTT_SPAN) * 100;
 const parseTime = (s: string) => {
@@ -512,13 +511,6 @@ const labelStyle: React.CSSProperties = {
 
 interface DbDriver { id: string; driver_number: string; full_name: string; }
 
-// Fallback roster from static data (utilisé en mode démo uniquement)
-const STATIC_DRIVERS: DbDriver[] = [
-  ...L3.map(d => ({ id: d.code, driver_number: d.code, full_name: d.nom })),
-  ...L4.map(d => ({ id: d.code, driver_number: d.code, full_name: d.nom })),
-  ...CHM.map(d => ({ id: d.code, driver_number: d.code, full_name: d.nom })),
-];
-
 /** Détermine la ligne et la couleur à partir du numéro chauffeur */
 function lineFromCode(driverNumber: string): { _ligne: string; _color: string } {
   if (driverNumber.startsWith('D')) return { _ligne: 'L3',  _color: 'var(--brand)' };
@@ -532,14 +524,7 @@ function apiToDriverExt(d: DbDriver): DriverExt {
   return { code: d.driver_number, nom: d.full_name, ...lineFromCode(d.driver_number) } as DriverExt;
 }
 
-const STATIC_DRIVER_EXT: DriverExt[] = [
-  ...L3.map(d => ({ ...d, _ligne: 'L3',  _color: 'var(--brand)'   })),
-  ...L4.map(d => ({ ...d, _ligne: 'L4',  _color: 'var(--info)'    })),
-  ...CHM.map(d => ({ ...d, _ligne: 'CHM', _color: 'var(--success)' })),
-];
-
-const loadDrivers = (setDrivers: (d: DbDriver[]) => void, demo: boolean) => {
-  if (demo) { setDrivers(STATIC_DRIVERS); return; }
+const loadDrivers = (setDrivers: (d: DbDriver[]) => void) => {
   api.get('/drivers')
     .then((r: any) => {
       const data: DbDriver[] = r.data ?? [];
@@ -552,7 +537,6 @@ const loadDrivers = (setDrivers: (d: DbDriver[]) => void, demo: boolean) => {
 
 function NouvelleCourseModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const today = new Date().toISOString().split('T')[0];
-  const { demo } = useDemoMode();
   const [form, setForm] = useState({
     date: today, heure: '05:00', heure_arrivee: '', sens: 'AM', ligne: 'L3',
     driver_id: '', amount: '', notes: '',
@@ -562,7 +546,7 @@ function NouvelleCourseModal({ onClose, onCreated }: { onClose: () => void; onCr
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => { loadDrivers(setDrivers, demo); }, [demo]);
+  useEffect(() => { loadDrivers(setDrivers); }, []);
 
   const set = (k: keyof typeof form) => (v: string | boolean) => setForm(p => ({ ...p, [k]: v }));
 
@@ -800,7 +784,6 @@ function EditCourseModal({ tripId, prefill, onClose, onSaved }: {
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { demo } = useDemoMode();
   const [form, setForm] = useState({
     driver_id: prefill?.driver_id ?? '',
     date: prefill?.date ?? new Date().toISOString().split('T')[0],
@@ -816,7 +799,7 @@ function EditCourseModal({ tripId, prefill, onClose, onSaved }: {
   const [loading, setLoading] = useState(!!tripId);
 
   useEffect(() => {
-    loadDrivers(setDrivers, demo);
+    loadDrivers(setDrivers);
     if (tripId) {
       api.get(`/planning/${tripId}`).then(r => {
         const t: DbTrip & { is_unplanned?: boolean; passenger_count?: number } = r.data;
@@ -1055,7 +1038,6 @@ function WeekGridView({ currentDate, ligne, refreshKey, onEditCell, drivers: dri
   onEditCell: (dr: DriverExt, date: Date, tripId?: string) => void;
   drivers?: DriverExt[];
 }) {
-  const { demo } = useDemoMode();
   const mon = startOfWeek(currentDate);
   const monISO = toISO(mon);
   const days = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
@@ -1070,7 +1052,6 @@ function WeekGridView({ currentDate, ligne, refreshKey, onEditCell, drivers: dri
   const [weekLinesFromTrips, setWeekLinesFromTrips] = useState<Array<{code:string;name:string;badge:string;color:string}>>([]);
 
   useEffect(() => {
-    if (demo) { setTripMap({}); setApiReady(false); return; }
     let cancelled = false;
     const monDate = new Date(monISO);
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monDate, i));
@@ -1125,9 +1106,9 @@ function WeekGridView({ currentDate, ligne, refreshKey, onEditCell, drivers: dri
     setApiReady(false);
     load();
     return () => { cancelled = true; };
-  }, [monISO, refreshKey, demo]);
+  }, [monISO, refreshKey]);
 
-  const allDrivers = driversProp ?? STATIC_DRIVER_EXT;
+  const allDrivers = driversProp ?? [];
 
   // Fallback line info for legacy hardcoded lines
   const WEEK_FALLBACK_LINES: Record<string,{code:string;name:string;badge:string;color:string}> = {
@@ -1481,7 +1462,6 @@ export default function PlanningPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = () => setRefreshKey(k => k + 1);
-  const { demo } = useDemoMode();
   const [realDrivers, setRealDrivers] = useState<DriverExt[]>([]);
   // Lines fetched from /clients/lines (used for day-view grouping and filter pills)
   const [clientLines, setClientLines] = useState<Array<{code:string;name:string;badge:string;color:string}>>([]);
@@ -1490,7 +1470,6 @@ export default function PlanningPage() {
 
   // Fetch transport lines from API
   useEffect(() => {
-    if (demo) return;
     api.get('/clients/lines')
       .then(r => {
         const lines: any[] = r.data ?? [];
@@ -1502,22 +1481,21 @@ export default function PlanningPage() {
         })));
       })
       .catch(() => {});
-  }, [demo]);
+  }, []);
 
-  // En mode réel : charger les chauffeurs depuis l'API
+  // Charger les chauffeurs depuis l'API
   useEffect(() => {
-    if (demo) { setRealDrivers([]); return; }
     api.get('/drivers')
       .then(r => {
         const list: DbDriver[] = r.data ?? [];
         setRealDrivers(list.map(apiToDriverExt));
       })
       .catch(() => setRealDrivers([]));
-  }, [demo, refreshKey]);
+  }, [refreshKey]);
 
   // Charger les courses réelles pour la vue jour (pour récupérer les tripId sur clic barre)
   useEffect(() => {
-    if (viewMode !== 'jour' || demo) { setDayTripMap({}); return; }
+    if (viewMode !== 'jour') { setDayTripMap({}); return; }
     const isoDate = toISO(currentDate);
     Promise.all([api.get('/drivers'), api.get(`/planning?date=${isoDate}`)])
       .then(([drRes, trRes]) => {
@@ -1538,7 +1516,7 @@ export default function PlanningPage() {
         setDayDriverLineMap(dlm);
       })
       .catch(() => {});
-  }, [viewMode, currentDate, refreshKey, demo]);
+  }, [viewMode, currentDate, refreshKey]);
 
   const handleConfirmReplace = async () => {
     if (!selectedDriverCode || !replaceTarget || replacing) return;
@@ -1581,7 +1559,7 @@ export default function PlanningPage() {
     }
   };
 
-  const allDrivers: DriverExt[] = demo ? STATIC_DRIVER_EXT : realDrivers;
+  const allDrivers: DriverExt[] = realDrivers;
 
   // Fallback line info for day view (before trip data loads or for static drivers)
   const DAY_FALLBACK_LINES: Record<string,{code:string;name:string;badge:string;color:string}> = {

@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { PageBar, Eyebrow } from '@/components/ui';
-import { useDemoMode } from '@/lib/demo';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -434,7 +433,6 @@ function NewReportModal({
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function RapportsPage() {
-  const { demo } = useDemoMode();
   const [lines,       setLines]       = useState<ClientLine[]>([]);
   const [reports,     setReports]     = useState<Report[]>([]);
   const [loading,     setLoading]     = useState(true);
@@ -446,17 +444,6 @@ export default function RapportsPage() {
   /* Charger lignes + tous les rapports */
   const loadData = useCallback(async () => {
     setLoading(true);
-    if (demo) {
-      setLines([
-        { id:'l3', client_id:'cadema', client_name:'CADEMA', code:'L3', name:'Ligne 3', badge:'AO', color:'#2563eb' },
-        { id:'l4', client_id:'cadema', client_name:'CADEMA', code:'L4', name:'Ligne 4', badge:'AO', color:'#7c3aed' },
-        { id:'chm', client_id:'chm',   client_name:'CHM',   code:'CHM-PT', name:'Petite-Terre', badge:'MARCHÉ', color:'#059669' },
-      ]);
-      setReports(DEMO_REPORTS);
-      setSelClient('cadema');
-      setLoading(false);
-      return;
-    }
     try {
       const [linesRes, reportsRes] = await Promise.all([
         api.get('/clients/lines'),
@@ -475,9 +462,9 @@ export default function RapportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [demo, selClient]);
+  }, [selClient]);
 
-  useEffect(() => { loadData(); }, [demo]);
+  useEffect(() => { loadData(); }, []);
 
   /* Clients uniques depuis les lignes */
   const uniqueClients = Array.from(
@@ -648,51 +635,3 @@ export default function RapportsPage() {
   );
 }
 
-// ── Données demo (fallback si API absente) ────────────────────────────────────
-
-const DEMO_REPORTS: Report[] = [
-  {
-    id: 'r1', client_id: 'cadema', line_id: 'l4',
-    period_start: '2026-03-01', period_end: '2026-03-31', month: '2026-03',
-    title: 'Rapport mars 2026',
-    total_usagers: 14820, avg_taux: 83, jours_service: 23,
-    total_incidents: 4, total_retards: 22, total_unplanned: 7,
-    comment: `Le mois de mars 2026 affiche une fréquentation soutenue sur la Ligne 4 avec 14 820 usagers transportés pour 23 jours de service effectif. Le taux de fréquentation moyen de 83 % place cette ligne en situation de quasi-saturation les jours de semaine, avec 6 journées dépassant le seuil de 90 %.
-
-Les 22 retards enregistrés (départs > 10 mn) sont principalement concentrés en fin de semaine et s'expliquent par les conditions de circulation sur l'axe Vahibe–PEM. Un point de vigilance à traiter avec les chauffeurs concernés lors de la prochaine réunion d'équipe.
-
-Les 7 courses non prévues au planning ont été assurées sans surcharge tarifaire excessive, témoignant de la réactivité de l'équipe.`,
-    created_at: '2026-04-02T08:30:00Z',
-    client_name: 'CADEMA', line_name: 'Ligne 4', badge: 'AO', color: '#7c3aed',
-  },
-  {
-    id: 'r2', client_id: 'cadema', line_id: 'l3',
-    period_start: '2026-03-01', period_end: '2026-03-31', month: '2026-03',
-    title: 'Rapport mars 2026',
-    total_usagers: 18980, avg_taux: 89, jours_service: 23,
-    total_incidents: 2, total_retards: 18, total_unplanned: 5,
-    comment: `La Ligne 3 enregistre 18 980 usagers sur mars 2026 avec un taux moyen de 89 %, le plus élevé du réseau. La saturation reste préoccupante : 9 jours au-dessus de 90 % nécessitent d'envisager un véhicule supplémentaire pour les pics matinaux.`,
-    created_at: '2026-04-02T09:00:00Z',
-    client_name: 'CADEMA', line_name: 'Ligne 3', badge: 'AO', color: '#2563eb',
-  },
-  {
-    id: 'r3', client_id: 'chm', line_id: 'chm',
-    period_start: '2026-03-01', period_end: '2026-03-31', month: '2026-03',
-    title: 'Rapport mars 2026',
-    total_usagers: 7640, avg_taux: 62, jours_service: 23,
-    total_incidents: 1, total_retards: 9, total_unplanned: 3,
-    comment: `Le réseau CHM Petite-Terre affiche un taux de 62 % en mars, en légère progression. L'incident du 19 mars (panne véhicule H3) a été géré sans interruption de service grâce au remplaçant mobilisé en 18 minutes.`,
-    created_at: '2026-04-03T10:00:00Z',
-    client_name: 'CHM', line_name: 'Petite-Terre', badge: 'MARCHÉ', color: '#059669',
-  },
-  {
-    id: 'r4', client_id: 'cadema', line_id: 'l4',
-    period_start: '2026-02-01', period_end: '2026-02-28', month: '2026-02',
-    title: 'Rapport février 2026',
-    total_usagers: 13240, avg_taux: 79, jours_service: 20,
-    total_incidents: 2, total_retards: 15, total_unplanned: 4,
-    comment: `Février 2026 : mois court mais performant avec 13 240 usagers. Léger recul du taux global à 79 % dû au week-end prolongé du 10 au 11 février.`,
-    created_at: '2026-03-04T08:00:00Z',
-    client_name: 'CADEMA', line_name: 'Ligne 4', badge: 'AO', color: '#7c3aed',
-  },
-];
