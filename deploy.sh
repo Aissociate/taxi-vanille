@@ -14,17 +14,36 @@ cd /opt/taxivanille
 
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
 
+# --force : rebuild même si pas de nouveau commit (utile après un git pull manuel)
+# --all   : rebuild tous les services (équivalent --force avec tout le diff)
+FORCE_REBUILD=false
+REBUILD_ALL=false
+for arg in "$@"; do
+  case "$arg" in
+    --force) FORCE_REBUILD=true ;;
+    --all)   FORCE_REBUILD=true; REBUILD_ALL=true ;;
+  esac
+done
+
 echo "▶ Récupération des changements..."
 BEFORE=$(git rev-parse HEAD)
 git pull origin main
 AFTER=$(git rev-parse HEAD)
 
-if [ "$BEFORE" = "$AFTER" ]; then
+if [ "$BEFORE" = "$AFTER" ] && [ "$FORCE_REBUILD" = "false" ]; then
   echo "✓ Rien à déployer (déjà à jour sur $AFTER)."
+  echo "  Lance avec --force pour rebuild quand même."
   exit 0
 fi
 
-CHANGED=$(git diff --name-only "$BEFORE" "$AFTER")
+if [ "$REBUILD_ALL" = "true" ]; then
+  CHANGED="backend/ web/ nginx/ docker-compose.yml database/migrations/"
+elif [ "$BEFORE" = "$AFTER" ]; then
+  # --force sans nouveaux commits : on rebuild ce qui a été modifié dans le dernier commit
+  CHANGED=$(git diff --name-only "HEAD~1" "HEAD")
+else
+  CHANGED=$(git diff --name-only "$BEFORE" "$AFTER")
+fi
 echo "▶ Fichiers modifiés depuis $BEFORE :"
 echo "$CHANGED" | sed 's/^/   /'
 
