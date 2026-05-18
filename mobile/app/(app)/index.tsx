@@ -127,6 +127,19 @@ export default function ScheduleScreen() {
           </View>
         )}
 
+        {/* Empty state : aucune course planifiée pour ce chauffeur aujourd'hui */}
+        {!isLoading && trips.length === 0 && (
+          <View style={s.emptyState}>
+            <Text style={s.emptyEmoji}>🗓️</Text>
+            <Text style={s.emptyTitle}>Aucune course aujourd'hui</Text>
+            <Text style={s.emptyMsg}>
+              {offline
+                ? 'Pas de données en cache. Reconnecte-toi à Internet pour synchroniser.'
+                : 'Ton planning du jour est vide. Tire vers le bas pour rafraîchir.'}
+            </Text>
+          </View>
+        )}
+
         {trips.map(trip => {
           const status = trip.status || 'planned';
           const isDone = status === 'done';
@@ -237,4 +250,8 @@ const s = StyleSheet.create({
   metaDone: { color: INK4 },
   incidentBar: { backgroundColor: DANGER, paddingVertical: 20, alignItems: 'center' },
   incidentBarText: { fontFamily: 'SpaceMono', fontSize: 12, fontWeight: '700', color: '#fff', letterSpacing: 2.5, textTransform: 'uppercase' },
+  emptyState: { alignItems: 'center', paddingVertical: 56, paddingHorizontal: 24 },
+  emptyEmoji: { fontSize: 48, marginBottom: 14, opacity: 0.85 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: INK, marginBottom: 8, textAlign: 'center' },
+  emptyMsg: { fontSize: 13, color: INK3, textAlign: 'center', lineHeight: 18, maxWidth: 300 },
 });
