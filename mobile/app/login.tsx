@@ -35,6 +35,7 @@ export default function LoginScreen() {
       return;
     }
     setLoading(true);
+    const apiUrl = (process.env.EXPO_PUBLIC_API_URL ?? '(undef → localhost fallback)');
     try {
       const { data } = await api.post('/auth/driver/login', {
         driver_number: num,
@@ -43,7 +44,12 @@ export default function LoginScreen() {
       await storeTokens(data.access_token, data.refresh_token);
       router.replace('/(app)');
     } catch (e: any) {
-      Alert.alert('Connexion refusée', e.response?.data?.message ?? 'Numéro ou PIN incorrect');
+      const status = e.response?.status ?? 'no-status';
+      const body = e.response?.data ? JSON.stringify(e.response.data).slice(0, 200) : (e.message ?? 'unknown');
+      Alert.alert(
+        '[DEBUG] Login fail',
+        `URL bake: ${apiUrl}\nNum: "${num}"\nPin len: ${pin.length}\nStatus: ${status}\nBody: ${body}`,
+      );
       setPin('');
     } finally {
       setLoading(false);
