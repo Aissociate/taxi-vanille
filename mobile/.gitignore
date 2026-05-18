@@ -3,6 +3,11 @@ node_modules/
 .expo-shared/
 dist/
 web-build/
+# .env est committé (URL prod publique, pas de secret).
+# .env.local OU .env.development.local pour les overrides dev (localhost) — gitignored.
+.env.local
+.env.development.local
+.env.production.local
 *.jks
 *.p8
 *.p12

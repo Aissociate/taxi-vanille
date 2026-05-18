@@ -2,6 +2,9 @@ node_modules/
 .env
 .env.local
 .env.production
+# mobile/.env est OK a committer (contient juste EXPO_PUBLIC_API_URL,
+# variable publique baked dans le JS bundle, pas de secret).
+!mobile/.env
 dist/
 build/
 .next/
