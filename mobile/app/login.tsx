@@ -134,6 +134,22 @@ export default function LoginScreen() {
           <Text style={s.connectBtnText}>{loading ? '…' : 'Se connecter'}</Text>
         </TouchableOpacity>
 
+        {/* DEBUG: test réseau direct via fetch (bypass axios) */}
+        <TouchableOpacity
+          style={{ marginTop: 12, padding: 12, borderWidth: 1, borderColor: INK5, borderRadius: 10 }}
+          onPress={async () => {
+            const url = (process.env.EXPO_PUBLIC_API_URL ?? '(undef)') + '/health';
+            try {
+              const r = await fetch(url);
+              const t = await r.text();
+              Alert.alert('[DEBUG] fetch /health', `URL: ${url}\nStatus: ${r.status}\nBody: ${t.slice(0, 200)}`);
+            } catch (e: any) {
+              Alert.alert('[DEBUG] fetch FAIL', `URL: ${url}\nError: ${e?.message ?? String(e)}`);
+            }
+          }}>
+          <Text style={{ fontSize: 12, color: INK3, textAlign: 'center' }}>[DEBUG] Test réseau direct (fetch)</Text>
+        </TouchableOpacity>
+
         <Text style={s.hint}>· HORS-LIGNE AUTORISÉ</Text>
       </View>
     </KeyboardAvoidingView>
