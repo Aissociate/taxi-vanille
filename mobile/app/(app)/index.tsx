@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Alert } from 'react-native';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/src/lib/api';
+import { api, clearTokens } from '@/src/lib/api';
 import { saveSchedule, getSchedule, bufferGps, getPendingEvents } from '@/src/lib/db';
 import { syncAll } from '@/src/lib/sync';
+
+async function handleLogout() {
+  try { await api.post('/auth/logout', {}); } catch {}
+  await clearTokens();
+  router.replace('/login');
+}
 
 const BRAND = '#F26419';
 const INK = '#1A1718';
@@ -108,11 +114,24 @@ export default function ScheduleScreen() {
 
       {/* Header */}
       <View style={s.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={s.dateText}>{formatDate().toUpperCase()}</Text>
           <Text style={s.titleText}>Planning du jour</Text>
         </View>
-        <Text style={s.driverNum}>{driverNum || '—'}</Text>
+        <TouchableOpacity
+          onPress={() => Alert.alert(
+            'Déconnexion',
+            `Se déconnecter du compte ${driverNum || ''} ?`,
+            [
+              { text: 'Annuler', style: 'cancel' },
+              { text: 'Se déconnecter', style: 'destructive', onPress: handleLogout },
+            ],
+          )}
+          style={s.driverNumBtn}
+          activeOpacity={0.7}>
+          <Text style={s.driverNum}>{driverNum || '—'}</Text>
+          <Text style={s.logoutHint}>⏻</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -227,7 +246,9 @@ const s = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   dateText: { fontFamily: 'SpaceMono', fontSize: 10, color: INK3, letterSpacing: 1.5, marginBottom: 2 },
   titleText: { fontSize: 28, fontWeight: '800', color: INK },
-  driverNum: { fontFamily: 'SpaceMono', fontSize: 14, color: INK4, fontWeight: '700', paddingBottom: 4 },
+  driverNumBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: INK5 },
+  driverNum: { fontFamily: 'SpaceMono', fontSize: 14, color: INK, fontWeight: '700' },
+  logoutHint: { fontSize: 14, color: DANGER },
   scroll: { flex: 1, backgroundColor: BG },
   scrollContent: { paddingHorizontal: 16, paddingTop: 10 },
   cachePill: { borderRadius: 10, borderWidth: 1.5, borderColor: INK5, borderStyle: 'dashed', paddingVertical: 10, paddingHorizontal: 14, marginBottom: 12, backgroundColor: '#fff' },
