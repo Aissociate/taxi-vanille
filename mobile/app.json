@@ -27,6 +27,10 @@
       ]
     ],
     "scheme": "taxivanille",
+    "experiments": {
+      "tsconfigPaths": true,
+      "typedRoutes": false
+    },
     "extra": {
       "router": {
         "origin": false
