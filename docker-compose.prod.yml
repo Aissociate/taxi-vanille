@@ -62,18 +62,21 @@ services:
           memory: 64m
 
   # ── Certbot (Let's Encrypt) ─────────────────────────────────────────────────
-  # Service one-shot pour émettre / renouveler les certificats.
-  # Lancer manuellement :
-  #   docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm certbot certonly \
+  # Émission initiale (one-shot, garde l'entrypoint par défaut = `certbot`) :
+  #   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile tls \
+  #     run --rm --entrypoint certbot certbot certonly \
   #     --webroot -w /var/www/certbot -d app.taxivanille.yt \
   #     --email admin@taxivanille.yt --agree-tos --no-eff-email
+  #
+  # Renouvellement auto (boucle 12 h) :
+  #   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile tls up -d certbot
   certbot:
     image: certbot/certbot:latest
     profiles: ["tls"]
     volumes:
       - certbot_www:/var/www/certbot
       - certbot_certs:/etc/letsencrypt
-    entrypoint: /bin/sh -c
+    entrypoint: ["/bin/sh", "-c"]
     command: ["trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"]
 
 volumes:

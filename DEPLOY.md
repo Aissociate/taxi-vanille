@@ -85,12 +85,14 @@ docker compose logs nginx --tail 50
 cd /opt/taxivanille
 
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile tls \
-  run --rm certbot certonly \
+  run --rm --entrypoint certbot certbot certonly \
   --webroot -w /var/www/certbot \
   -d app.taxivanille.yt \
   --email admin@taxivanille.yt \
   --agree-tos --no-eff-email
 ```
+
+> Le flag `--entrypoint certbot` est nécessaire car le service `certbot` du compose override l'entrypoint pour la boucle de renouvellement long-running. Pour cette émission ponctuelle on veut le binaire `certbot` direct.
 
 Tu dois voir `Successfully received certificate` et les fichiers sont stockés dans le volume Docker `certbot_certs`.
 
